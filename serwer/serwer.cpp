@@ -172,79 +172,83 @@ void handle_client(int client_socket) {
 
     broadcast_to_room(room_name, "Gra rozpoczyna się!\n");
 
-    // Pobierz stan pokoju
-    auto game_state = room_states[room_name];
-    auto& guessed_word = game_state->guessed_words[client_socket];
-    auto& wrong_guesses = game_state->wrong_guesses[client_socket];
-    auto& wrong_count = game_state->wrong_counts[client_socket];
-
     while (true) {
-        // Wyślij stan gry
-        std::string game_state_msg = "Hasło: " + guessed_word + "\n";
-        game_state_msg += "Niepoprawne litery: " + wrong_guesses + "\n";
-        game_state_msg += "Pozostałe próby: " + std::to_string(MAX_WRONG_GUESSES - wrong_count) + "\n";
-        send(client_socket, game_state_msg.c_str(), game_state_msg.length(), 0);
+        // Pobierz stan pokoju
+        auto game_state = room_states[room_name];
+        auto& guessed_word = game_state->guessed_words[client_socket];
+        auto& wrong_guesses = game_state->wrong_guesses[client_socket];
+        auto& wrong_count = game_state->wrong_counts[client_socket];
 
-        // Pobierz literę od gracza
-        send(client_socket, "Podaj literę: ", 14, 0);
-        len = recv(client_socket, buffer, 1024, 0);
-        if (len <= 0) break;
+        while (true) {
+            // Wyślij stan gry
+            std::string game_state_msg = "Hasło: " + guessed_word + "\n";
+            game_state_msg += "Niepoprawne litery: " + wrong_guesses + "\n";
+            game_state_msg += "Pozostałe próby: " + std::to_string(MAX_WRONG_GUESSES - wrong_count) + "\n";
+            send(client_socket, game_state_msg.c_str(), game_state_msg.length(), 0);
 
-        buffer[len] = '\0';
-        char guessed_char = buffer[0];
+            // Pobierz literę od gracza
+            send(client_socket, "Podaj literę: ", 14, 0);
+            int len = recv(client_socket, buffer, 1024, 0);
+            if (len <= 0) return;
 
-        // Sprawdź literę
-        {
-            std::lock_guard<std::mutex> lock(game_state->game_mutex);
-            bool correct_guess = false;
-            for (size_t i = 0; i < game_state->secret_word.size(); ++i) {
-                if (game_state->secret_word[i] == guessed_char) {
-                    guessed_word[i] = guessed_char;
-                    correct_guess = true;
-                }
-            }
+            buffer[len] = '\0';
+            char guessed_char = buffer[0];
 
-            if (!correct_guess) {
-                wrong_guesses += guessed_char;
-                wrong_guesses += ' ';
-                wrong_count++;
-            }
-        }
-
-        // Sprawdź warunki zakończenia gry
-        if (guessed_word == game_state->secret_word) {
-            send(client_socket, "Gratulacje! Wygrałeś!\n", 26, 0);
-            broadcast_to_room(room_name, "Gra zakończona! Wygrał gracz: " + client_nick + "\n", client_socket);
+            // Sprawdź literę
             {
-                std::this_thread::sleep_for(std::chrono::seconds(5));
-                std::lock_guard<std::mutex> lock(*room_mutexes[room_name]);
-                if (rooms[room_name].size() >= 2) {
-                    restart_game(room_name);
-                                broadcast_to_room(room_name, "Grasdasdasd");
+                std::lock_guard<std::mutex> lock(game_state->game_mutex);
+                bool correct_guess = false;
+                for (size_t i = 0; i < game_state->secret_word.size(); ++i) {
+                    if (game_state->secret_word[i] == guessed_char) {
+                        guessed_word[i] = guessed_char;
+                        correct_guess = true;
+                    }
+                }
 
+                if (!correct_guess) {
+                    wrong_guesses += guessed_char;
+                    wrong_guesses += ' ';
+                    wrong_count++;
                 }
             }
-            break;
-        }
-        if (wrong_count >= MAX_WRONG_GUESSES) {
-            send(client_socket, ("Przegrałeś! Hasło to: " + game_state->secret_word + "\n").c_str(), game_state->secret_word.size() + 20, 0);
-            break;
+
+            // Sprawdź warunki zakończenia gry
+            if (guessed_word == game_state->secret_word) {
+                send(client_socket, "Gratulacje! Wygrałeś!\n", 26, 0);
+                broadcast_to_room(room_name, "Gra zakończona! Wygrał gracz: " + client_nick + "\n", client_socket);
+
+                std::this_thread::sleep_for(std::chrono::seconds(5));
+                {
+                    std::lock_guard<std::mutex> lock(*room_mutexes[room_name]);
+                    if (rooms[room_name].size() >= 1) {
+                        restart_game(room_name);
+                    }
+                    broadcast_to_room(room_name, "Naciśnij przycisk 'enter', aby grać dalej, jezeli nie, wpisz '/exit'\n", client_socket);
+                }
+                break;
+
+            }
+
+            if (wrong_count >= MAX_WRONG_GUESSES) {
+                send(client_socket, ("Przegrałeś! Hasło to: " + game_state->secret_word + "\n").c_str(), game_state->secret_word.size() + 20, 0);
+                break;
+            }
         }
     }
 
     // Usuń klienta z pokoju
-    // {
-    //     std::lock_guard<std::mutex> lock(clients_mutex);
-    //     rooms[room_name].erase(client_socket);
-    //     if (rooms[room_name].empty()) {
-    //         rooms.erase(room_name);
-    //         room_states.erase(room_name);
-    //     }
-    //     clients.erase(client_socket);
-    // }
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex);
+        rooms[room_name].erase(client_socket);
+        if (rooms[room_name].empty()) {
+            rooms.erase(room_name);
+            room_states.erase(room_name);
+        }
+        clients.erase(client_socket);
+    }
 
-    // broadcast_to_room(room_name, client_nick + " opuścił pokój.\n", client_socket);
-    // close(client_socket);
+    broadcast_to_room(room_name, client_nick + " opuścił pokój.\n", client_socket);
+    close(client_socket);
 }
 
 int main() {

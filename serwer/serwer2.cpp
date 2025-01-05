@@ -29,6 +29,7 @@ struct GameState {
     std::unordered_map<int, std::string> wrong_guesses; // Indywidualne błędne litery
     std::unordered_map<int, int> wrong_counts;         // Indywidualna liczba błędów
     std::mutex game_mutex;
+    bool game_over = false;  // Flaga oznaczająca koniec gry
 };
 
 // Globalne zmienne
@@ -45,11 +46,24 @@ void broadcast_to_room(const std::string& room_name, const std::string& message,
     }
 }
 
+void send_game_state_to_client(const std::string& room_name, int client_socket) {
+    auto game_state = room_states[room_name];
+    auto& guessed_word = game_state->guessed_words[client_socket];
+    auto& wrong_guesses = game_state->wrong_guesses[client_socket];
+    auto& wrong_count = game_state->wrong_counts[client_socket];
+
+    std::string game_state_msg = "Hasło: " + guessed_word + "\n";
+    game_state_msg += "Niepoprawne litery: " + wrong_guesses + "\n";
+    game_state_msg += "Pozostałe próby: " + std::to_string(MAX_WRONG_GUESSES - wrong_count) + "\n";
+    send(client_socket, game_state_msg.c_str(), game_state_msg.length(), 0);
+}
+
 void restart_game(const std::string& room_name) {
     auto game_state = room_states[room_name];
     {
         std::lock_guard<std::mutex> lock(game_state->game_mutex);
         game_state->secret_word = word_pool[rand() % word_pool.size()];
+        game_state->game_over = false;
         for (int socket : rooms[room_name]) {
             game_state->guessed_words[socket] = std::string(game_state->secret_word.size(), '_');
             game_state->wrong_guesses[socket].clear();
@@ -57,6 +71,10 @@ void restart_game(const std::string& room_name) {
         }
     }
     broadcast_to_room(room_name, "Nowa gra rozpoczyna się!");
+    for (int socket : rooms[room_name]) {
+        send_game_state_to_client(room_name, socket);
+    }
+    room_conditions[room_name]->notify_all();
 }
 
 void handle_client(int client_socket) {
@@ -145,6 +163,8 @@ void handle_client(int client_socket) {
                 game_state->wrong_counts[client_socket] = 0;
                 send(client_socket, ("Dołączono do pokoju: " + room_name + "\n").c_str(), room_name.length() + 30, 0);
 
+                send_game_state_to_client(room_name, client_socket);
+
                 if (rooms[room_name].size() == 2) {
                     room_conditions[room_name]->notify_all();
                 }
@@ -180,11 +200,12 @@ void handle_client(int client_socket) {
         auto& wrong_count = game_state->wrong_counts[client_socket];
 
         while (true) {
+            if (game_state->game_over) {
+                break;
+            }
+
             // Wyślij stan gry
-            std::string game_state_msg = "Hasło: " + guessed_word + "\n";
-            game_state_msg += "Niepoprawne litery: " + wrong_guesses + "\n";
-            game_state_msg += "Pozostałe próby: " + std::to_string(MAX_WRONG_GUESSES - wrong_count) + "\n";
-            send(client_socket, game_state_msg.c_str(), game_state_msg.length(), 0);
+            send_game_state_to_client(room_name, client_socket);
 
             // Pobierz literę od gracza
             send(client_socket, "Podaj literę: ", 14, 0);
@@ -217,13 +238,17 @@ void handle_client(int client_socket) {
                 send(client_socket, "Gratulacje! Wygrałeś!\n", 26, 0);
                 broadcast_to_room(room_name, "Gra zakończona! Wygrał gracz: " + client_nick + "\n", client_socket);
 
+                {
+                    std::lock_guard<std::mutex> lock(game_state->game_mutex);
+                    game_state->game_over = true;
+                }
+
                 std::this_thread::sleep_for(std::chrono::seconds(5));
                 {
                     std::lock_guard<std::mutex> lock(*room_mutexes[room_name]);
-                    if (rooms[room_name].size() >= 1) {
+                    if (rooms[room_name].size() >= 2) {
                         restart_game(room_name);
                     }
-                    broadcast_to_room(room_name, "Naciśnij przycisk 'enter', aby grać dalej, jezeli nie, wpisz '/exit'\n", client_socket);
                 }
                 break;
 
