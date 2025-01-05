@@ -5,6 +5,7 @@
 #include <vector>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstdlib>
@@ -16,11 +17,12 @@ const int MAX_WRONG_GUESSES = 6;
 
 std::mutex clients_mutex;
 std::unordered_map<int, std::string> clients;
+std::unordered_map<std::string, std::unordered_set<int>> rooms;
 std::vector<std::string> word_pool = {"example", "network", "hangman", "server", "client"};
 
-void broadcast(const std::string& message, int exclude_socket = -1) {
+void broadcast_to_room(const std::string& room_name, const std::string& message, int exclude_socket = -1) {
     std::lock_guard<std::mutex> lock(clients_mutex);
-    for (const auto& [socket, nick] : clients) {
+    for (int socket : rooms[room_name]) {
         if (socket != exclude_socket) {
             send(socket, message.c_str(), message.length(), 0);
         }
@@ -46,10 +48,73 @@ void handle_client(int client_socket) {
         clients[client_socket] = client_nick;
     }
 
-    std::cout << client_nick << " dołączył do gry." << std::endl;
-    broadcast(client_nick + " dołączył do gry.\n", client_socket);
+    std::cout << client_nick << " dołączył do serwera." << std::endl;
+    send(client_socket, "Witaj! Możesz stworzyć pokój (1) lub dołączyć do istniejącego (2): ", 58, 0);
 
-    // Rozpocznij grę
+    len = recv(client_socket, buffer, 1024, 0);
+    if (len <= 0) {
+        close(client_socket);
+        return;
+    }
+    buffer[len] = '\0';
+    int choice = buffer[0] - '0';
+    std::string room_name;
+
+    if (choice == 1) {
+        send(client_socket, "Podaj nazwę pokoju: ", 21, 0);
+        len = recv(client_socket, buffer, 1024, 0);
+        if (len <= 0) {
+            close(client_socket);
+            return;
+        }
+        buffer[len] = '\0';
+        room_name = buffer;
+
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex);
+            rooms[room_name].insert(client_socket);
+        }
+
+        send(client_socket, ("Stworzono pokój: " + room_name + "\n").c_str(), room_name.length() + 17, 0);
+    } else if (choice == 2) {
+        send(client_socket, "Dostępne pokoje:\n", 20, 0);
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex);
+            for (const auto& [room, sockets] : rooms) {
+                std::string room_info = room + " (" + std::to_string(sockets.size()) + "/4)\n";
+                send(client_socket, room_info.c_str(), room_info.length(), 0);
+            }
+        }
+
+        send(client_socket, "Podaj nazwę pokoju, do którego chcesz dołączyć: ", 49, 0);
+        len = recv(client_socket, buffer, 1024, 0);
+        if (len <= 0) {
+            close(client_socket);
+            return;
+        }
+        buffer[len] = '\0';
+        room_name = buffer;
+
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex);
+            if (rooms.find(room_name) != rooms.end() && rooms[room_name].size() < MAX_CLIENTS) {
+                rooms[room_name].insert(client_socket);
+                send(client_socket, ("Dołączono do pokoju: " + room_name + "\n").c_str(), room_name.length() + 19, 0);
+            } else {
+                send(client_socket, "Nie można dołączyć do pokoju. Spróbuj ponownie.\n", 49, 0);
+                close(client_socket);
+                return;
+            }
+        }
+    } else {
+        send(client_socket, "Nieprawidłowy wybór. Rozłączanie...\n", 37, 0);
+        close(client_socket);
+        return;
+    }
+
+    broadcast_to_room(room_name, client_nick + " dołączył do pokoju.\n", client_socket);
+
+    // Rozpoczęcie gry w pokoju
     std::string secret_word = word_pool[rand() % word_pool.size()];
     std::string guessed_word(secret_word.size(), '_');
     std::string wrong_guesses;
@@ -96,11 +161,17 @@ void handle_client(int client_socket) {
         }
     }
 
-    // Usuń klienta
+    // Usuń klienta z pokoju
     {
         std::lock_guard<std::mutex> lock(clients_mutex);
+        rooms[room_name].erase(client_socket);
+        if (rooms[room_name].empty()) {
+            rooms.erase(room_name);
+        }
         clients.erase(client_socket);
     }
+
+    broadcast_to_room(room_name, client_nick + " opuścił pokój.\n", client_socket);
     close(client_socket);
 }
 
