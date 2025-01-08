@@ -163,7 +163,9 @@ void handle_client(int client_socket) {
                 game_state->wrong_counts[client_socket] = 0;
                 send(client_socket, ("Dołączono do pokoju: " + room_name + "\n").c_str(), room_name.length() + 30, 0);
 
-                send_game_state_to_client(room_name, client_socket);
+                for (int socket : rooms[room_name]) {
+                    send_game_state_to_client(room_name, socket);
+                }
 
                 if (rooms[room_name].size() == 2) {
                     room_conditions[room_name]->notify_all();

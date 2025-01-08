@@ -1,0 +1,412 @@
+#include <iostream>
+#include <string>
+#include <thread>
+#include <vector>
+#include <mutex>
+#include <unordered_map>
+#include <unordered_set>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <cstdlib>
+#include <ctime>
+#include <memory>
+#include <condition_variable>
+#include <chrono>
+
+const int PORT = 12345;
+const int MAX_CLIENTS = 4;
+const int MAX_WRONG_GUESSES = 6;
+
+std::mutex clients_mutex;
+std::unordered_map<int, std::string> clients;
+std::unordered_map<std::string, std::unordered_set<int>> rooms;
+std::vector<std::string> word_pool = {"example", "network", "hangman", "server", "client"};
+
+// Struktura przechowująca wspólne hasło i stany graczy
+class GameState {
+public:
+    std::string secret_word;
+    std::unordered_map<int, std::string> guessed_words;
+    std::unordered_map<int, std::string> wrong_guesses;
+    std::unordered_map<int, int> wrong_counts;
+    std::mutex game_mutex;
+    bool game_over = false;
+
+    GameState(const std::string& word) : secret_word(word) {}
+
+    void reset(const std::string& new_word) {
+        std::lock_guard<std::mutex> lock(game_mutex);
+        secret_word = new_word;
+        game_over = false;
+        guessed_words.clear();
+        wrong_guesses.clear();
+        wrong_counts.clear();
+    }
+};
+
+class Room {
+public:
+    std::string name;
+    std::shared_ptr<GameState> game_state;  // Wspólne hasło
+    std::unordered_set<int> clients;       // Gracze w pokoju
+    std::unordered_map<int, std::string>& clients_nicks;
+    std::mutex room_mutex;
+    std::condition_variable room_condition;
+
+    Room(const std::string& room_name, const std::string& initial_word, std::unordered_map<int, std::string>& nicks)
+        : name(room_name), game_state(std::make_shared<GameState>(initial_word)), clients_nicks(nicks) {
+        game_state->secret_word = initial_word; // Wspólne hasło
+    }
+
+    void broadcast(const std::string& message, int exclude_socket = -1) {
+        std::lock_guard<std::mutex> lock(room_mutex);
+        for (int socket : clients) {
+            if (socket != exclude_socket) {
+                send_message(socket, message);
+            }
+        }
+    }
+
+    void reset_game(const std::vector<std::string>& word_pool) {
+        std::string new_word = word_pool[rand() % word_pool.size()];
+        {
+            std::lock_guard<std::mutex> lock(game_state->game_mutex);
+            game_state->reset(new_word);
+        }
+        broadcast("Nowa gra rozpoczyna się! Hasło: " + std::string(game_state->secret_word.size(), '_') + "\n");
+        for (int socket : clients) {
+            initialize_player_state(socket);
+        }
+        room_condition.notify_all();
+    }
+
+    void send_game_state(int client_socket) {
+        auto& guessed_word = game_state->guessed_words[client_socket];
+        auto& wrong_guesses = game_state->wrong_guesses[client_socket];
+        auto& wrong_count = game_state->wrong_counts[client_socket];
+
+        std::string game_state_msg = "Hasło: " + guessed_word + "\n";
+        game_state_msg += "Niepoprawne litery: " + wrong_guesses + "\n";
+        game_state_msg += "Pozostałe próby: " + std::to_string(MAX_WRONG_GUESSES - wrong_count) + "\n";
+        send_message(client_socket, game_state_msg);
+    }
+
+    void start_game() {
+        while (true) {
+            {
+                std::unique_lock<std::mutex> lock(room_mutex);
+                room_condition.wait(lock, [&]() { return clients.size() >= 2; });
+            }
+
+            broadcast("Gra rozpoczyna się!\n");
+
+            for (int client_socket : clients) {
+                initialize_player_state(client_socket);
+            }
+
+            while (!game_state->game_over) {
+                for (int client_socket : clients) {
+                    send_game_state(client_socket);
+
+                    if (!send_message(client_socket, "Podaj literę: ")) {
+                        clients.erase(client_socket);
+                        continue;
+                    }
+
+                    std::string guessed_char;
+                    if (!recv_message(client_socket, guessed_char) || guessed_char.empty()) {
+                        clients.erase(client_socket);
+                        continue;
+                    }
+
+                    char letter = guessed_char[0];
+                    bool correct_guess = false;
+
+                    {
+                        std::lock_guard<std::mutex> lock(game_state->game_mutex);
+                        for (size_t i = 0; i < game_state->secret_word.size(); ++i) {
+                            if (game_state->secret_word[i] == letter) {
+                                game_state->guessed_words[client_socket][i] = letter;
+                                correct_guess = true;
+                            }
+                        }
+
+                        if (!correct_guess) {
+                            game_state->wrong_guesses[client_socket] += letter;
+                            game_state->wrong_counts[client_socket]++;
+                        }
+                    }
+
+                    if (game_state->guessed_words[client_socket] == game_state->secret_word) {
+                        broadcast("Gracz " + clients_nicks[client_socket] + " odgadł hasło: " + game_state->secret_word + "!\n");
+                        game_state->game_over = true;
+                        break;
+                    }
+
+                    if (game_state->wrong_counts[client_socket] >= MAX_WRONG_GUESSES) {
+                        send_message(client_socket, "Przegrałeś! Hasło to: " + game_state->secret_word + "\n");
+                    }
+                }
+            }
+
+            reset_game(word_pool);
+        }
+    }
+
+private:
+    void initialize_player_state(int client_socket) {
+        std::lock_guard<std::mutex> lock(game_state->game_mutex);
+        game_state->guessed_words[client_socket] = std::string(game_state->secret_word.size(), '_');
+        game_state->wrong_guesses[client_socket].clear();
+        game_state->wrong_counts[client_socket] = 0;
+    }
+
+    bool send_message(int socket, const std::string& message) {
+        uint32_t len = htonl(message.size());
+        if (send(socket, &len, sizeof(len), 0) <= 0) return false;
+        if (send(socket, message.c_str(), message.size(), 0) <= 0) return false;
+        return true;
+    }
+
+    bool recv_message(int socket, std::string& message) {
+        uint32_t len = 0;
+        if (recv(socket, &len, sizeof(len), MSG_WAITALL) <= 0) return false;
+        len = ntohl(len);
+
+        char buffer[1024];
+        message.clear();
+        while (len > 0) {
+            int received = recv(socket, buffer, std::min(len, static_cast<uint32_t>(sizeof(buffer))), 0);
+            if (received <= 0) return false;
+            message.append(buffer, received);
+            len -= received;
+        }
+        return true;
+    }
+};
+
+class Server {
+private:
+    int server_socket;
+    std::unordered_map<int, std::string> client_nicks;
+    std::unordered_map<std::string, std::shared_ptr<Room>> rooms;
+    std::mutex server_mutex;
+
+public:
+    Server() {
+        srand(static_cast<unsigned>(time(0)));
+        server_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (server_socket == -1) {
+            throw std::runtime_error("Nie można utworzyć gniazda.");
+        }
+
+        int opt = 1;
+        if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+            close(server_socket);
+            throw std::runtime_error("Nie można ustawić opcji socketu.");
+        }
+
+        sockaddr_in server_addr{};
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(PORT);
+        server_addr.sin_addr.s_addr = INADDR_ANY;
+
+        if (bind(server_socket, (sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+            close(server_socket);
+            throw std::runtime_error("Nie można związać gniazda z adresem.");
+        }
+
+        if (listen(server_socket, MAX_CLIENTS) == -1) {
+            close(server_socket);
+            throw std::runtime_error("Błąd nasłuchiwania.");
+        }
+
+        std::cout << "Serwer uruchomiony na porcie " << PORT << std::endl;
+    }
+
+    ~Server() {
+        close(server_socket);
+    }
+
+    void start() {
+        while (true) {
+            sockaddr_in client_addr;
+            socklen_t client_len = sizeof(client_addr);
+            int client_socket = accept(server_socket, (sockaddr*)&client_addr, &client_len);
+
+            if (client_socket == -1) {
+                std::cerr << "Błąd akceptacji połączenia." << std::endl;
+                continue;
+            }
+            // TODO ADAM
+            std::thread(&Server::handle_client, this, client_socket).detach();
+        }
+    }
+
+    void handle_client(int client_socket) {
+        // char buffer[1024];
+        std::string client_nick;
+
+        if (!send_message(client_socket, "Podaj swój nick: ")) {
+            close(client_socket);
+            return;
+        }
+
+        if (!recv_message(client_socket, client_nick)) {
+            close(client_socket);
+            return;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(server_mutex);
+            bool nick_exists = false;
+            for (const auto& pair : client_nicks) {
+                if (pair.second == client_nick) {
+                    nick_exists = true;
+                    break;
+                }
+            }
+
+            if (nick_exists) {
+                send_message(client_socket, "Nick jest już zajęty. Rozłączanie...");
+                close(client_socket);
+                return;
+            }
+
+            client_nicks[client_socket] = client_nick;
+        }
+
+        std::cout << client_nick << " dołączył do serwera." << std::endl; // do wywalenia
+
+        if (!send_message(client_socket, "Witaj! Możesz stworzyć pokój (1) lub dołączyć do istniejącego (2): ")) {
+            close(client_socket);
+            return;
+        }
+
+        std::string choice_str;
+        if (!recv_message(client_socket, choice_str)) {
+            close(client_socket);
+            return;
+        }
+
+        int choice = choice_str[0] - '0';
+        if (choice == 1) {
+            create_room(client_socket);
+        } else if (choice == 2) {
+            join_room(client_socket);
+        } else {
+            send_message(client_socket, "Nieprawidłowy wybór. Rozłączanie...");
+            close(client_socket);
+        }
+    }
+
+    void create_room(int client_socket) {
+        std::string room_name;
+        if (!send_message(client_socket, "Podaj nazwę pokoju: ")) {
+            close(client_socket);
+            return;
+        }
+
+        if (!recv_message(client_socket, room_name)) {
+            close(client_socket);
+            return;
+        }
+
+        std::string initial_word = word_pool[rand() % word_pool.size()];
+        auto room = std::make_shared<Room>(room_name, initial_word, client_nicks);
+
+        {
+            std::lock_guard<std::mutex> lock(server_mutex);
+            rooms[room_name] = room;
+            room->clients.insert(client_socket);
+        }
+
+        send_message(client_socket, "Stworzono pokój: " + room_name + "\n");
+        std::thread(&Room::start_game, room).detach();
+    }
+
+    void join_room(int client_socket) {
+        if (!send_message(client_socket, "Dostępne pokoje:\n")) {
+            close(client_socket);
+            return;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(server_mutex);
+            for (const auto& [room_name, room] : rooms) {
+                std::string room_info = room_name + " (" + std::to_string(room->clients.size()) + "/4)\n";
+                send_message(client_socket, room_info);
+                // send_message(client_socket, room_name);
+            }
+        }
+
+        if (!send_message(client_socket, "Podaj nazwę pokoju, do którego chcesz dołączyć: ")) {
+            close(client_socket);
+            return;
+        }
+
+        std::string room_name;
+        if (!recv_message(client_socket, room_name)) {
+            close(client_socket);
+            return;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(server_mutex);
+            auto it = rooms.find(room_name);
+            if (it != rooms.end() && it->second->clients.size() < MAX_CLIENTS) {
+                auto room = it->second;
+                room->clients.insert(client_socket);
+                room->send_game_state(client_socket);
+                room->broadcast(client_nicks[client_socket] + " dołączył do pokoju.\n");
+
+                {
+                    std::lock_guard<std::mutex> room_lock(room->room_mutex);
+                    if (room->clients.size() == 2) {
+                        room->room_condition.notify_all();
+                    }
+                }
+            } else {
+                send_message(client_socket, "Nie można dołączyć do pokoju. Spróbuj ponownie. (Rozłączanie ...)\n");
+                close(client_socket);
+                // Dodanie ponownej próby dołaczenia.
+            }
+        }
+    }
+
+private:
+    bool send_message(int socket, const std::string& message) {
+        uint32_t len = htonl(message.size());
+        if (send(socket, &len, sizeof(len), 0) <= 0) return false;
+        if (send(socket, message.c_str(), message.size(), 0) <= 0) return false;
+        return true;
+    }
+
+    bool recv_message(int socket, std::string& message) {
+        uint32_t len = 0;
+        if (recv(socket, &len, sizeof(len), MSG_WAITALL) <= 0) return false;
+        len = ntohl(len);
+
+        char buffer[1024];
+        message.clear();
+        while (len > 0) {
+            int received = recv(socket, buffer, std::min(len, static_cast<uint32_t>(sizeof(buffer))), 0);
+            if (received <= 0) return false;
+            message.append(buffer, received);
+            len -= received;
+        }
+        return true;
+    }
+};
+
+
+int main() {
+    try {
+        Server server;
+        server.start();
+    } catch (const std::exception& e) {
+        std::cerr << "Błąd: " << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
+}
