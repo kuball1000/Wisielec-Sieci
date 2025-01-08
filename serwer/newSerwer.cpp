@@ -92,64 +92,78 @@ public:
     }
 
     void start_game() {
-        while (true) {
+
+        {
+            std::unique_lock<std::mutex> lock(room_mutex);
+            // Czekaj, aż będzie co najmniej dwóch graczy w pokoju
+            room_condition.wait(lock, [&]() { return clients.size() >= 2; });
+        }
+
+        broadcast("Gra rozpoczyna się! Hasło: " + std::string(game_state->secret_word.size(), '_') + "\n");
+
+        for (int client_socket : clients) {
+            initialize_player_state(client_socket);
+            // Tworzymy osobny wątek dla każdego klienta
+            std::thread(&Room::handle_client_game, this, client_socket).detach();
+        }
+    }
+
+    void handle_client_game(int client_socket) {
+        while (!game_state->game_over) {
+            send_game_state(client_socket);
+
+            if (!send_message(client_socket, "Podaj literę: ")) {
+                {
+                    std::lock_guard<std::mutex> lock(room_mutex);
+                    clients.erase(client_socket);
+                }
+                return;
+            }
+
+            std::string guessed_char;
+            if (!recv_message(client_socket, guessed_char) || guessed_char.empty()) {
+                {
+                    std::lock_guard<std::mutex> lock(room_mutex);
+                    clients.erase(client_socket);
+                }
+                return;
+            }
+
+            char letter = guessed_char[0];
+            bool correct_guess = false;
+
             {
-                std::unique_lock<std::mutex> lock(room_mutex);
-                room_condition.wait(lock, [&]() { return clients.size() >= 2; });
-            }
-
-            broadcast("Gra rozpoczyna się!\n");
-
-            for (int client_socket : clients) {
-                initialize_player_state(client_socket);
-            }
-
-            while (!game_state->game_over) {
-                for (int client_socket : clients) {
-                    send_game_state(client_socket);
-
-                    if (!send_message(client_socket, "Podaj literę: ")) {
-                        clients.erase(client_socket);
-                        continue;
+                std::lock_guard<std::mutex> lock(game_state->game_mutex);
+                for (size_t i = 0; i < game_state->secret_word.size(); ++i) {
+                    if (game_state->secret_word[i] == letter) {
+                        game_state->guessed_words[client_socket][i] = letter;
+                        correct_guess = true;
                     }
+                }
 
-                    std::string guessed_char;
-                    if (!recv_message(client_socket, guessed_char) || guessed_char.empty()) {
-                        clients.erase(client_socket);
-                        continue;
-                    }
-
-                    char letter = guessed_char[0];
-                    bool correct_guess = false;
-
-                    {
-                        std::lock_guard<std::mutex> lock(game_state->game_mutex);
-                        for (size_t i = 0; i < game_state->secret_word.size(); ++i) {
-                            if (game_state->secret_word[i] == letter) {
-                                game_state->guessed_words[client_socket][i] = letter;
-                                correct_guess = true;
-                            }
-                        }
-
-                        if (!correct_guess) {
-                            game_state->wrong_guesses[client_socket] += letter;
-                            game_state->wrong_counts[client_socket]++;
-                        }
-                    }
-
-                    if (game_state->guessed_words[client_socket] == game_state->secret_word) {
-                        broadcast("Gracz " + clients_nicks[client_socket] + " odgadł hasło: " + game_state->secret_word + "!\n");
-                        game_state->game_over = true;
-                        break;
-                    }
-
-                    if (game_state->wrong_counts[client_socket] >= MAX_WRONG_GUESSES) {
-                        send_message(client_socket, "Przegrałeś! Hasło to: " + game_state->secret_word + "\n");
-                    }
+                if (!correct_guess) {
+                    game_state->wrong_guesses[client_socket] += letter;
+                    game_state->wrong_counts[client_socket]++;
                 }
             }
 
-            reset_game(word_pool);
+            if (game_state->guessed_words[client_socket] == game_state->secret_word) {
+                broadcast("Gracz " + clients_nicks[client_socket] + " odgadł hasło: " + game_state->secret_word + "!\n");
+                {
+                    std::lock_guard<std::mutex> lock(game_state->game_mutex);
+                    game_state->game_over = true;
+                }
+                return;
+            }
+
+            if (game_state->wrong_counts[client_socket] >= MAX_WRONG_GUESSES) {
+                send_message(client_socket, "Przegrałeś! Hasło to: " + game_state->secret_word + "\n");
+                {
+                    std::lock_guard<std::mutex> lock(game_state->game_mutex);
+                    game_state->game_over = true;
+                }
+                return;
+            }
         }
     }
 
@@ -336,7 +350,6 @@ public:
             for (const auto& [room_name, room] : rooms) {
                 std::string room_info = room_name + " (" + std::to_string(room->clients.size()) + "/4)\n";
                 send_message(client_socket, room_info);
-                // send_message(client_socket, room_name);
             }
         }
 
