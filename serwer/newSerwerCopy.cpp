@@ -31,7 +31,7 @@ public:
     std::unordered_map<int, std::string> wrong_guesses;
     std::unordered_map<int, int> wrong_counts;
     std::mutex game_mutex;
-    bool game_over = false;
+    bool game_over = true;
     int winner_socket = -1;
 
     GameState(const std::string& word) : secret_word(word) {}
@@ -56,12 +56,13 @@ public:
     std::mutex room_mutex;
     std::condition_variable room_condition;
     std::unordered_set<int> losers; // Zbiór przegranych graczy
+    int owner_socket; // Socket założyciela
 
     int players_lost = 0;
     bool time_up = false;
 
-    Room(const std::string& room_name, const std::string& initial_word, std::unordered_map<int, std::string>& nicks)
-        : name(room_name), game_state(std::make_shared<GameState>(initial_word)), clients_nicks(nicks) {
+    Room(const std::string& room_name, const std::string& initial_word, int owner, std::unordered_map<int, std::string>& nicks)
+        : name(room_name), game_state(std::make_shared<GameState>(initial_word)), clients_nicks(nicks), owner_socket(owner) {
         game_state->secret_word = initial_word; // Wspólne hasło
     }
 
@@ -105,19 +106,39 @@ public:
         room_condition.wait(lock, [&]() { return clients.size() >= 2; });
     }
 
+    std::string command;
+    do {
+        if (!recv_message(owner_socket, command)) {
+            broadcast("Założyciel pokoju rozłączył się. Pokój zostaje zamknięty.\n");
+            close_room();
+            return;
+        }
+    } while (command != "/start");
+    game_state->game_over = false;
+
+
     broadcast("Gra rozpoczyna się!\n");
+
 
     for (int client_socket : clients) {
         initialize_player_state(client_socket);
         // std::thread(&Room::handle_client_game, this, client_socket).detach();
     }
 
-        std::thread(&Room::monitor_game_conditions, this).detach();
+    std::thread(&Room::monitor_game_conditions, this).detach();
+
+    reset_game_for_room();
 
 }
 
 void handle_client_game(int client_socket) {
     while (true) {
+
+        if (client_socket == owner_socket && clients.find(client_socket) == clients.end()) {
+            broadcast("Założyciel pokoju opuścił grę. Pokój zostaje zamknięty.\n");
+            close_room();
+            return;
+        }
 
         while (!game_state->game_over && losers.find(client_socket) == losers.end()) { // Pętla dla bieżącej rundy
             send_game_state(client_socket);
@@ -192,6 +213,21 @@ void handle_client_game(int client_socket) {
         }
     }
 }
+
+
+void close_room() {
+    std::lock_guard<std::mutex> lock(room_mutex);
+    for (int socket : clients) {
+        send_message(socket, "Pokój zostaje zamknięty.\n");
+        close(socket);
+    }
+    clients.clear();
+
+    // Usuń pokój z serwera
+    // std::lock_guard<std::mutex> server_lock(server_mutex);
+    rooms.erase(name);
+}
+
 
     void monitor_game_conditions() {
         auto start_time = std::chrono::steady_clock::now();
@@ -446,7 +482,7 @@ void handle_room_choice(int client_socket) {
         }
 
         std::string initial_word = word_pool[rand() % word_pool.size()];
-        auto room = std::make_shared<Room>(room_name, initial_word, client_nicks);
+        auto room = std::make_shared<Room>(room_name, initial_word, client_socket, client_nicks);
 
         {
             std::lock_guard<std::mutex> lock(server_mutex);
@@ -491,9 +527,9 @@ void handle_room_choice(int client_socket) {
             if (it != rooms.end() && it->second->clients.size() < MAX_CLIENTS) {
                 auto room = it->second;
                 room->clients.insert(client_socket);
-                            std::thread(&Room::handle_client_game, room, client_socket).detach();
+                std::thread(&Room::handle_client_game, room, client_socket).detach();
 
-                room->send_game_state(client_socket);
+                // room->send_game_state(client_socket);
                 room->broadcast(client_nicks[client_socket] + " dołączył do pokoju.\n");
 
                 {
