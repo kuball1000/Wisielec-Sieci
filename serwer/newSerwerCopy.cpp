@@ -203,6 +203,7 @@ void handle_client_game(int client_socket) {
                 }
             }
             std::cout << "klienci: : "<< clients.size() << std::endl;
+            broadcast_player_status();
 
         }
 
@@ -211,6 +212,8 @@ void handle_client_game(int client_socket) {
             std::unique_lock<std::mutex> lock(room_mutex);
             room_condition.wait(lock, [&]() { return !game_state->game_over; });
         }
+
+
     }
 }
 
@@ -314,6 +317,25 @@ void reset_game_for_room() {
 
     // Powiadomienie wątków klientów, że nowa runda się rozpoczęła
     room_condition.notify_all();
+}
+
+void broadcast_player_status() {
+    std::string status_list = "Stan graczy w pokoju:\n[";
+    bool first = true;
+
+    {
+        std::lock_guard<std::mutex> lock(game_state->game_mutex);
+        for (int socket : clients) {
+            if (!first) {
+                status_list += ", ";
+            }
+            status_list += "(" + clients_nicks[socket] + ", " + std::to_string(game_state->wrong_counts[socket]) + ")";
+            first = false;
+        }
+    }
+
+    status_list += "]\n";
+    broadcast(status_list);
 }
 
 void initialize_player_state(int client_socket) {
