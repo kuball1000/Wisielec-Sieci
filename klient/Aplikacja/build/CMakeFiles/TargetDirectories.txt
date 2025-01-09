@@ -1,0 +1,3 @@
+/home/adam/Wisielec-Sieci/klient/Aplikacja/build/CMakeFiles/SFMLApplication.dir
+/home/adam/Wisielec-Sieci/klient/Aplikacja/build/CMakeFiles/edit_cache.dir
+/home/adam/Wisielec-Sieci/klient/Aplikacja/build/CMakeFiles/rebuild_cache.dir
