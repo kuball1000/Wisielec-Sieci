@@ -214,6 +214,14 @@ void handle_client_game(int client_socket) {
     }
 }
 
+void broadcast_player_list() {
+    std::string player_list = "Gracze w pokoju:\n";
+    for (int socket : clients) {
+        player_list += clients_nicks[socket] + "\n";
+    }
+    broadcast(player_list);
+}
+
 
 void close_room() {
     std::lock_guard<std::mutex> lock(room_mutex);
@@ -493,6 +501,7 @@ void handle_room_choice(int client_socket) {
         }
 
         send_message(client_socket, "Stworzono pokój: " + room_name + "\n");
+        room->broadcast_player_list(); // Wyświetlenie listy graczy w pokoju
         std::thread(&Room::start_game, room).detach();
     }
 
@@ -531,6 +540,8 @@ void handle_room_choice(int client_socket) {
 
                 // room->send_game_state(client_socket);
                 room->broadcast(client_nicks[client_socket] + " dołączył do pokoju.\n");
+                room->broadcast_player_list(); // Wyświetlenie listy graczy w pokoju
+
 
                 {
                     std::lock_guard<std::mutex> room_lock(room->room_mutex);
