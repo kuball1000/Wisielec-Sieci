@@ -55,6 +55,7 @@ public:
     std::unordered_map<int, std::string>& clients_nicks;
     std::mutex room_mutex;
     std::condition_variable room_condition;
+    std::unordered_set<int> losers; // Zbiór przegranych graczy
 
     int players_lost = 0;
     bool time_up = false;
@@ -117,7 +118,8 @@ public:
 
 void handle_client_game(int client_socket) {
     while (true) {
-        while (!game_state->game_over) { // Pętla dla bieżącej rundy
+
+        while (!game_state->game_over && losers.find(client_socket) == losers.end()) { // Pętla dla bieżącej rundy
             send_game_state(client_socket);
 
             if (!send_message(client_socket, "Podaj literę: ")) {
@@ -135,6 +137,20 @@ void handle_client_game(int client_socket) {
                     clients.erase(client_socket);
                 }
                 return; // Klient rozłączył się
+            }
+
+            if (guessed_char == "/lobby") {
+                {
+                    std::lock_guard<std::mutex> lock(room_mutex);
+                    clients.erase(client_socket); // Usunięcie klienta z pokoju
+                }
+                send_message(client_socket, "Przechodzisz do lobby...\n");
+                
+                auto server_ptr = dynamic_cast<Server*>(this);
+                if (server_ptr) {
+                server_ptr->handle_room_choice(client_socket); // Powrót do lobby
+                }
+                return; // Zakończ bieżący wątek gry
             }
 
             char letter = guessed_char[0];
@@ -164,6 +180,10 @@ void handle_client_game(int client_socket) {
 
             if (game_state->wrong_counts[client_socket] == MAX_WRONG_GUESSES) {
                 send_message(client_socket, "Przegrałeś! Hasło to: " + game_state->secret_word + "\n");
+                {
+                    std::lock_guard<std::mutex> lock(room_mutex);
+                    losers.insert(client_socket); // Dodanie gracza do zbioru przegranych
+                }
                 {
                     std::lock_guard<std::mutex> lock(game_state->game_mutex);
                     players_lost++;
@@ -251,6 +271,7 @@ void reset_game_for_room() {
         game_state->game_over = false; // Resetujemy flagę game_over przed rozpoczęciem nowej rundy
         players_lost = 0;
         time_up = false;
+        losers.clear();
     }
 
     broadcast("Nowa gra rozpoczyna się! Hasło: " + std::string(game_state->secret_word.size(), '_') + "\n");
@@ -356,62 +377,75 @@ public:
         }
     }
 
-    void handle_client(int client_socket) {
-        // char buffer[1024];
-        std::string client_nick;
-
-        if (!send_message(client_socket, "Podaj swój nick: ")) {
-            close(client_socket);
-            return;
-        }
-
-        if (!recv_message(client_socket, client_nick)) {
-            close(client_socket);
-            return;
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(server_mutex);
-            bool nick_exists = false;
-            for (const auto& pair : client_nicks) {
-                if (pair.second == client_nick) {
-                    nick_exists = true;
-                    break;
-                }
-            }
-
-            if (nick_exists) {
-                send_message(client_socket, "Nick jest już zajęty. Rozłączanie...");
-                close(client_socket);
-                return;
-            }
-
-            client_nicks[client_socket] = client_nick;
-        }
-
-        std::cout << client_nick << " dołączył do serwera." << std::endl; // do wywalenia
-
-        if (!send_message(client_socket, "Witaj! Możesz stworzyć pokój (1) lub dołączyć do istniejącego (2): ")) {
-            close(client_socket);
-            return;
-        }
-
-        std::string choice_str;
-        if (!recv_message(client_socket, choice_str)) {
-            close(client_socket);
-            return;
-        }
-
-        int choice = choice_str[0] - '0';
-        if (choice == 1) {
-            create_room(client_socket);
-        } else if (choice == 2) {
-            join_room(client_socket);
-        } else {
-            send_message(client_socket, "Nieprawidłowy wybór. Rozłączanie...");
-            close(client_socket);
-        }
+void handle_client(int client_socket) {
+    // Obsługa wpisywania nicku
+    if (!handle_client_nick(client_socket)) {
+        return; // Jeśli nie udało się poprawnie ustawić nicku, kończymy
     }
+
+    // Obsługa wyboru dotyczącego pokoju
+    handle_room_choice(client_socket);
+}
+
+bool handle_client_nick(int client_socket) {
+    std::string client_nick;
+
+    if (!send_message(client_socket, "Podaj swój nick: ")) {
+        close(client_socket);
+        return false;
+    }
+
+    if (!recv_message(client_socket, client_nick)) {
+        close(client_socket);
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(server_mutex);
+        bool nick_exists = false;
+        for (const auto& pair : client_nicks) {
+            if (pair.second == client_nick) {
+                nick_exists = true;
+                break;
+            }
+        }
+
+        if (nick_exists) {
+            send_message(client_socket, "Nick jest już zajęty. Rozłączanie...");
+            close(client_socket);
+            return false;
+        }
+
+        client_nicks[client_socket] = client_nick;
+    }
+
+    std::cout << client_nick << " dołączył do serwera." << std::endl; // do wywalenia
+    return true;
+}
+
+void handle_room_choice(int client_socket) {
+    if (!send_message(client_socket, "Witaj! Możesz stworzyć pokój (1) lub dołączyć do istniejącego (2): ")) {
+        close(client_socket);
+        return;
+    }
+
+    std::string choice_str;
+    if (!recv_message(client_socket, choice_str)) {
+        close(client_socket);
+        return;
+    }
+
+    int choice = choice_str[0] - '0';
+    if (choice == 1) {
+        create_room(client_socket);
+    } else if (choice == 2) {
+        join_room(client_socket);
+    } else {
+        send_message(client_socket, "Nieprawidłowy wybór. Rozłączanie...");
+        close(client_socket);
+    }
+}
+
 
     void create_room(int client_socket) {
         std::string room_name;
