@@ -53,6 +53,9 @@ public:
     std::mutex room_mutex;
     std::condition_variable room_condition;
 
+    int players_lost = 0;
+    bool time_up = false;
+
     Room(const std::string& room_name, const std::string& initial_word, std::unordered_map<int, std::string>& nicks)
         : name(room_name), game_state(std::make_shared<GameState>(initial_word)), clients_nicks(nicks) {
         game_state->secret_word = initial_word; // Wspólne hasło
@@ -102,15 +105,23 @@ public:
 
     for (int client_socket : clients) {
         initialize_player_state(client_socket);
+        send_game_state(client_socket);
+                std::cout << "elo1 " << client_socket << std::endl;
+
         // Tworzymy osobny wątek dla każdego klienta
-        // std::thread(&Room::handle_client_game, this, client_socket).detach();
+        std::thread(&Room::handle_client_game, this, client_socket).detach();
     }
+
+    std::thread(&Room::monitor_game_conditions, this).detach();
+
 }
 
 void handle_client_game(int client_socket) {
     while (true) {
         while (!game_state->game_over) { // Pętla dla bieżącej rundy
             send_game_state(client_socket);
+                    std::cout << "elo3 " << client_socket << std::endl;
+
 
             if (!send_message(client_socket, "Podaj literę: ")) {
                 {
@@ -119,6 +130,7 @@ void handle_client_game(int client_socket) {
                 }
                 return; // Klient rozłączył się
             }
+                                std::cout << "elo34 " << client_socket << std::endl;
 
             std::string guessed_char;
             if (!recv_message(client_socket, guessed_char) || guessed_char.empty()) {
@@ -128,6 +140,7 @@ void handle_client_game(int client_socket) {
                 }
                 return; // Klient rozłączył się
             }
+                    std::cout << "elo3 " << client_socket <<  guessed_char << std::endl;
 
             char letter = guessed_char[0];
             bool correct_guess = false;
@@ -149,14 +162,21 @@ void handle_client_game(int client_socket) {
 
             if (game_state->guessed_words[client_socket] == game_state->secret_word) {
                 broadcast("Gracz " + clients_nicks[client_socket] + " odgadł hasło: " + game_state->secret_word + "!\n");
-                end_round();
+                end_round(client_socket, "Odgadłeś hasło! Wygrałeś.\n");
                 break;
             }
 
             if (game_state->wrong_counts[client_socket] >= MAX_WRONG_GUESSES) {
                 send_message(client_socket, "Przegrałeś! Hasło to: " + game_state->secret_word + "\n");
-                end_round();
-                break;
+                {
+                    std::lock_guard<std::mutex> lock(game_state->game_mutex);
+                    players_lost++;
+                }
+                if (players_lost == static_cast<int>(clients.size()) - 1) {
+                    int winner = find_last_player();
+                    end_round(winner, "Zostałeś ostatnim graczem przy życiu! Wygrywasz.\n");
+                    return;
+                }
             }
         }
 
@@ -168,11 +188,41 @@ void handle_client_game(int client_socket) {
     }
 }
 
-void end_round() {
+    void monitor_game_conditions() {
+        auto start_time = std::chrono::steady_clock::now();
+        while (!game_state->game_over) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+
+            {
+                std::lock_guard<std::mutex> lock(room_mutex);
+                if (clients.size() == 1) {
+                    int last_player = *clients.begin();
+                    end_round(last_player, "Zostałeś ostatnim graczem w pokoju. Wygrywasz.\n");
+                    return;
+                }
+            }
+
+            auto elapsed_time = std::chrono::duration_cast<std::chrono::minutes>(
+                std::chrono::steady_clock::now() - start_time
+            );
+            if (elapsed_time.count() >= 1) {
+                std::lock_guard<std::mutex> lock(game_state->game_mutex);
+                time_up = true;
+                broadcast("Czas się skończył! Gra zakończona.\n");
+                reset_game_for_room();
+                return;
+            }
+        }
+    }
+
+void end_round(int winner_socket, const std::string& message) {
     {
         std::lock_guard<std::mutex> lock(game_state->game_mutex);
         if (!game_state->game_over) { // Upewniamy się, że ustawiamy tylko raz
             game_state->game_over = true;
+            if (winner_socket != -1) {
+                send_message(winner_socket, message);
+            }
             broadcast("Runda zakończona! Nowa runda rozpocznie się za 5 sekund...\n");
         }
     }
@@ -190,19 +240,36 @@ void reset_game_for_room() {
         std::lock_guard<std::mutex> lock(game_state->game_mutex);
         game_state->reset(new_word);
         game_state->game_over = false; // Resetujemy flagę game_over przed rozpoczęciem nowej rundy
+        players_lost = 0;
+        time_up = false;
     }
 
     broadcast("Nowa gra rozpoczyna się! Hasło: " + std::string(game_state->secret_word.size(), '_') + "\n");
+std::cout << "Reset gry: Tworzenie nowych wątków dla graczy.\n";
 
     for (int client_socket : clients) {
         initialize_player_state(client_socket);
+        std::cout << "elo " << client_socket << std::endl;
         send_game_state(client_socket); // Wyślij pełny stan gry dla każdego gracza
+            std::cout << "Tworzenie wątku dla gracza: " << client_socket << std::endl;
+
+        std::thread(&Room::handle_client_game, this, client_socket).detach();
 
     }
 
     // Powiadomienie wątków klientów, że nowa runda się rozpoczęła
     room_condition.notify_all();
 }
+
+    int find_last_player() {
+        std::lock_guard<std::mutex> lock(room_mutex);
+        for (int client_socket : clients) {
+            if (game_state->wrong_counts[client_socket] < MAX_WRONG_GUESSES) {
+                return client_socket;
+            }
+        }
+        return -1; // W razie błędu
+    }
 
 void initialize_player_state(int client_socket) {
     std::lock_guard<std::mutex> lock(game_state->game_mutex);
@@ -371,8 +438,6 @@ public:
             std::lock_guard<std::mutex> lock(server_mutex);
             rooms[room_name] = room;
             room->clients.insert(client_socket);
-            std::thread(&Room::handle_client_game, room, client_socket).detach();
-
         }
 
         send_message(client_socket, "Stworzono pokój: " + room_name + "\n");
@@ -409,10 +474,16 @@ public:
             auto it = rooms.find(room_name);
             if (it != rooms.end() && it->second->clients.size() < MAX_CLIENTS) {
                 auto room = it->second;
-                room->clients.insert(client_socket);
-                            std::thread(&Room::handle_client_game, room, client_socket).detach();
-
+                {
+                    std::lock_guard<std::mutex> room_lock(room->room_mutex);
+                    room->clients.insert(client_socket);
+                    room->initialize_player_state(client_socket); // Inicjalizacja stanu dla nowego gracza
+                }                
+                
                 room->send_game_state(client_socket);
+                        std::cout << "elo4 " << client_socket << std::endl;
+                        
+
                 room->broadcast(client_nicks[client_socket] + " dołączył do pokoju.\n");
 
                 {
