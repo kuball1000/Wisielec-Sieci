@@ -139,20 +139,6 @@ void handle_client_game(int client_socket) {
                 return; // Klient rozłączył się
             }
 
-            if (guessed_char == "/lobby") {
-                {
-                    std::lock_guard<std::mutex> lock(room_mutex);
-                    clients.erase(client_socket); // Usunięcie klienta z pokoju
-                }
-                send_message(client_socket, "Przechodzisz do lobby...\n");
-                
-                auto server_ptr = dynamic_cast<Server*>(this);
-                if (server_ptr) {
-                server_ptr->handle_room_choice(client_socket); // Powrót do lobby
-                }
-                return; // Zakończ bieżący wątek gry
-            }
-
             char letter = guessed_char[0];
             bool correct_guess = false;
 
