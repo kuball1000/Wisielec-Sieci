@@ -10,6 +10,8 @@
 #include "Widok_Choice.h"
 #include "Widok_Game.h"
 #include <mutex>
+#include <vector>
+#include <string>
 
 class Application {
 public:
@@ -40,6 +42,11 @@ private:
     std::mutex messageMutex;
     std::atomic<bool> waitingForResponse = false; // Flaga oczekiwania na odpowiedź
 
+
+    // Zmienne dla widoku gry
+    std::string password; // Aktualne hasło w grze
+    std::vector<std::string> playerNames; // Nazwy graczy w pokoju
+    std::vector<int> playerStages; // Etapy wisielca dla każdego gracza
 };
 
 #endif

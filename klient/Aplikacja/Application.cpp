@@ -8,6 +8,9 @@ Application::Application()
       loginView(window),
       choiceView(window),
       gameView(window),
+      password("______"), // Przykładowe hasło
+      playerNames({"Gracz1", "Gracz2", "Gracz3", "Gracz4"}),
+      playerStages({4, 5, 6, 3})
       running(true) {
         if (!connectToServer("127.0.0.1", 12345)) {
             std::cerr << "Nie udało się połączyć z serwerem." << std::endl;
@@ -25,7 +28,7 @@ Application::~Application() {
     }
 }
 
-bool Application::connectToServer(const std::string& serverIp, unsigned short port) {
+bool Application::connectToServer(const std::string &serverIp, unsigned short port) {
     if (tcpSocket.connect(serverIp, port) == sf::Socket::Done) {
         std::cout << "Połączono z serwerem na " << serverIp << ":" << port << std::endl;
         return true;
@@ -33,7 +36,7 @@ bool Application::connectToServer(const std::string& serverIp, unsigned short po
     return false;
 }
 
-bool Application::sendMessage(const std::string& message) {
+bool Application::sendMessage(const std::string &message) {
     uint32_t len = htonl(message.size());
     if (tcpSocket.send(&len, sizeof(len)) != sf::Socket::Done) {
         return false;
@@ -138,16 +141,22 @@ void Application::handleEvents() {
                     }
                 }
                 break;
-            case ViewState::Choice1:
-                if (choiceView.handleEvent(event, currentRoom)) {
-                    currentView = currentRoom.empty() ? ViewState::Choice1 : ViewState::Game;
+        case ViewState::Choice1:
+            if (choiceView.handleEvent(event, currentRoom)) {
+                if (choiceView.needsReset()) {
+                    // Powrót do głównego widoku z Widok_Choice
+                    choiceView.resetToMainView();
+                } else if (!currentRoom.empty()) {
+                    // Przejście do widoku gry po wybraniu pokoju
+                    currentView = ViewState::Game;
                 }
-                break;
-            case ViewState::Game:
-                if (gameView.handleEvent(event)) {
-                    currentView = ViewState::Choice1;
-                }
-                break;
+            }
+            break;
+        case ViewState::Game:
+            if (gameView.handleEvent(event)) {
+                currentView = ViewState::Choice1;
+            }
+            break;
         }
     }
 }
@@ -156,15 +165,15 @@ void Application::render() {
     window.clear(sf::Color(200, 200, 200));
 
     switch (currentView) {
-        case ViewState::Login:
-            loginView.render();
-            break;
-        case ViewState::Choice1:
-            choiceView.render();
-            break;
-        case ViewState::Game:
-            gameView.render(currentRoom);
-            break;
+    case ViewState::Login:
+        loginView.render();
+        break;
+    case ViewState::Choice1:
+        choiceView.render();
+        break;
+    case ViewState::Game:
+        gameView.render(currentRoom, password, playerNames, playerStages);
+        break;
     }
 
     window.display();
