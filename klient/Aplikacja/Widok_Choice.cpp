@@ -1,7 +1,8 @@
 #include "Widok_Choice.h"
 #include "Resources.h"
 
-Widok_Choice::Widok_Choice(sf::RenderWindow& window) : window(window), currentState(State::MainView) {
+Widok_Choice::Widok_Choice(sf::RenderWindow &window) : window(window), currentState(State::MainView)
+{
     // Główny widok
     title.setFont(Resources::getFont());
     title.setString("Wybierz opcje:");
@@ -29,7 +30,7 @@ Widok_Choice::Widok_Choice(sf::RenderWindow& window) : window(window), currentSt
     joinButtonText.setFillColor(sf::Color::White);
     joinButtonText.setPosition(310, 230);
 
-    // Widok tworzenia pokoju
+    // Widok "Stwórz pokój"
     inputBox.setSize(sf::Vector2f(300, 40));
     inputBox.setFillColor(sf::Color(230, 230, 230));
     inputBox.setPosition(250, 150);
@@ -49,6 +50,7 @@ Widok_Choice::Widok_Choice(sf::RenderWindow& window) : window(window), currentSt
     confirmButtonText.setFillColor(sf::Color::White);
     confirmButtonText.setPosition(310, 230);
 
+    // Przycisk powrotu
     backButton.setSize(sf::Vector2f(100, 40));
     backButton.setFillColor(sf::Color(128, 128, 128));
     backButton.setPosition(50, 500);
@@ -60,66 +62,107 @@ Widok_Choice::Widok_Choice(sf::RenderWindow& window) : window(window), currentSt
     backButtonText.setPosition(60, 510);
 }
 
-bool Widok_Choice::needsReset() const {
-    return currentState == State::MainView;
+void Widok_Choice::addRoom(const std::string &roomName)
+{
+    roomNames.push_back(roomName);
 }
 
-void Widok_Choice::resetToMainView() {
-    currentState = State::MainView;
-    roomNameInput.clear(); // Resetowanie pola tekstowego
-}
-
-bool Widok_Choice::handleEvent(const sf::Event& event, std::string& roomName) {
+bool Widok_Choice::handleEvent(const sf::Event &event, std::string &roomName)
+{
     sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
 
-    if (currentState == State::MainView) {
-        if (event.type == sf::Event::MouseButtonPressed) {
-            if (createButton.getGlobalBounds().contains(mousePos)) {
+    if (currentState == State::MainView)
+    {
+        if (event.type == sf::Event::MouseButtonPressed)
+        {
+            if (createButton.getGlobalBounds().contains(mousePos))
+            {
                 currentState = State::CreateRoomView;
-            } else if (joinButton.getGlobalBounds().contains(mousePos)) {
+            }
+            else if (joinButton.getGlobalBounds().contains(mousePos))
+            {
                 currentState = State::JoinRoomView;
             }
         }
-    } else if (currentState == State::CreateRoomView) {
-        if (event.type == sf::Event::TextEntered) {
-            if (event.text.unicode == 8 && !roomNameInput.empty()) { // Backspace
+    }
+    else if (currentState == State::CreateRoomView)
+    {
+        if (event.type == sf::Event::TextEntered)
+        {
+            if (event.text.unicode == 8 && !roomNameInput.empty())
+            { // Backspace
                 roomNameInput.pop_back();
-            } else if (event.text.unicode >= 32 && event.text.unicode <= 126) {
+            }
+            else if (event.text.unicode >= 32 && event.text.unicode <= 126)
+            {
                 roomNameInput += static_cast<char>(event.text.unicode);
             }
-        } else if (event.type == sf::Event::MouseButtonPressed) {
-            if (confirmButton.getGlobalBounds().contains(mousePos)) {
+        }
+        else if (event.type == sf::Event::MouseButtonPressed)
+        {
+            if (confirmButton.getGlobalBounds().contains(mousePos))
+            {
                 roomName = roomNameInput;
-                return true; // Przejście do widoku gry
-            } else if (backButton.getGlobalBounds().contains(mousePos)) {
+                addRoom(roomName); // Dodajemy nowy pokój do listy
+                return true;       // Przejście do widoku gry
+            }
+            else if (backButton.getGlobalBounds().contains(mousePos))
+            {
                 currentState = State::MainView;
             }
         }
     }
-
+    else if (currentState == State::JoinRoomView)
+    {
+        if (event.type == sf::Event::MouseButtonPressed)
+        {
+            // Sprawdzenie kliknięcia na przycisk pokoju
+            for (size_t i = 0; i < roomButtons.size(); ++i)
+            {
+                if (roomButtons[i].getGlobalBounds().contains(mousePos))
+                {
+                    roomName = roomNames[i];
+                    return true; // Przejście do widoku gry
+                }
+            }
+            // Obsługa przycisku powrotu
+            if (backButton.getGlobalBounds().contains(mousePos))
+            {
+                currentState = State::MainView;
+            }
+        }
+    }
     return false;
 }
 
-void Widok_Choice::render() {
-    if (currentState == State::MainView) {
+void Widok_Choice::render()
+{
+    if (currentState == State::MainView)
+    {
         window.draw(title);
         window.draw(createButton);
         window.draw(createButtonText);
         window.draw(joinButton);
         window.draw(joinButtonText);
-    } else if (currentState == State::CreateRoomView) {
+    }
+    else if (currentState == State::CreateRoomView)
+    {
         renderCreateRoom();
-    } else if (currentState == State::JoinRoomView) {
-        renderJoinRoom({ "Pokoj 1", "Pokoj 2", "Pokoj 3" });
+    }
+    else if (currentState == State::JoinRoomView)
+    {
+        renderJoinRoom();
     }
 }
 
-void Widok_Choice::renderCreateRoom() {
+void Widok_Choice::renderCreateRoom()
+{
     window.draw(inputBox);
 
     sf::Text displayedInput(roomNameInput, Resources::getFont(), 20);
     displayedInput.setPosition(260, 160);
     displayedInput.setFillColor(sf::Color::Black);
+    displayedInput.setString(roomNameInput);
 
     window.draw(displayedInput);
     window.draw(confirmButton);
@@ -128,11 +171,13 @@ void Widok_Choice::renderCreateRoom() {
     window.draw(backButtonText);
 }
 
-void Widok_Choice::renderJoinRoom(const std::vector<std::string>& roomNames) {
+void Widok_Choice::renderJoinRoom()
+{
     roomButtons.clear();
     roomButtonTexts.clear();
 
-    for (size_t i = 0; i < roomNames.size(); ++i) {
+    for (size_t i = 0; i < roomNames.size(); ++i)
+    {
         sf::RectangleShape button;
         button.setSize(sf::Vector2f(200, 40));
         button.setFillColor(sf::Color(100, 149, 237));
@@ -149,8 +194,23 @@ void Widok_Choice::renderJoinRoom(const std::vector<std::string>& roomNames) {
         roomButtonTexts.push_back(text);
     }
 
-    for (size_t i = 0; i < roomButtons.size(); ++i) {
+    for (size_t i = 0; i < roomButtons.size(); ++i)
+    {
         window.draw(roomButtons[i]);
         window.draw(roomButtonTexts[i]);
     }
+
+    window.draw(backButton);
+    window.draw(backButtonText);
+}
+
+bool Widok_Choice::needsReset() const
+{
+    return currentState == State::MainView;
+}
+
+void Widok_Choice::resetToMainView()
+{
+    currentState = State::MainView;
+    roomNameInput.clear();
 }

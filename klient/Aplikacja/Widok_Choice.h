@@ -14,7 +14,10 @@ public:
     bool needsReset() const;
 
     void renderCreateRoom();
-    void renderJoinRoom(const std::vector<std::string>& roomNames);
+    void renderJoinRoom();
+
+    // Dodajemy metodę do zarządzania listą pokoi
+    void addRoom(const std::string& roomName);
 
 private:
     enum class State {
@@ -45,6 +48,7 @@ private:
     sf::Text backButtonText;
 
     // Widok dołączania do pokoju
+    std::vector<std::string> roomNames; // Lista nazw pokoi
     std::vector<sf::RectangleShape> roomButtons;
     std::vector<sf::Text> roomButtonTexts;
 };
