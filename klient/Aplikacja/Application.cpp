@@ -7,11 +7,23 @@ Application::Application()
       currentView(ViewState::Login),
       loginView(window),
       choiceView(window),
-      gameView(window) {
+      gameView(window),
+      running(true) {
         if (!connectToServer("127.0.0.1", 12345)) {
             std::cerr << "Nie udało się połączyć z serwerem." << std::endl;
+        } else {
+        // Uruchom wątek odbierania wiadomości
+        receiverThread = std::thread(&Application::receiveMessages, this);
         }
-      }
+    }
+
+Application::~Application() {
+    // Zatrzymaj wątek odbierania wiadomości
+    running = false;
+    if (receiverThread.joinable()) {
+        receiverThread.join();
+    }
+}
 
 bool Application::connectToServer(const std::string& serverIp, unsigned short port) {
     if (tcpSocket.connect(serverIp, port) == sf::Socket::Done) {
@@ -30,6 +42,40 @@ bool Application::sendMessage(const std::string& message) {
         return false;
     }
     return true;
+}
+
+void Application::receiveMessages() {
+    while (running) {
+        std::string message;
+        uint32_t len = 0;
+        std::size_t received = 0;
+
+        // Odbierz długość wiadomości
+        if (tcpSocket.receive(&len, sizeof(len), received) != sf::Socket::Done || received != sizeof(len)) {
+            if (running) { // Jeśli flaga jest aktywna, zgłoś błąd
+                std::cerr << "Błąd podczas odbierania długości wiadomości." << std::endl;
+            }
+            continue;
+        }
+        len = ntohl(len);
+
+        // Odbierz treść wiadomości
+        char buffer[1024];
+        message.clear();
+        while (len > 0) {
+            std::size_t bytesReceived = 0;
+            if (tcpSocket.receive(buffer, std::min(len, static_cast<uint32_t>(sizeof(buffer))), bytesReceived) != sf::Socket::Done) {
+                std::cerr << "Błąd podczas odbierania wiadomości." << std::endl;
+                break;
+            }
+            message.append(buffer, bytesReceived);
+            len -= bytesReceived;
+        }
+
+        if (!message.empty()) {
+            std::cout << "Serwer: " << message << std::endl;
+        }
+    }
 }
 
 void Application::run() {
