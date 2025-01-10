@@ -454,21 +454,30 @@ bool handle_client_nick(int client_socket) {
 
     {
         std::lock_guard<std::mutex> lock(server_mutex);
-        bool nick_exists = false;
-        for (const auto& pair : client_nicks) {
-            if (pair.second == client_nick) {
-                nick_exists = true;
-                break;
+        bool nick_exists = true;
+
+        while (nick_exists) {
+            nick_exists = false;
+            
+            for (const auto& pair : client_nicks) {
+                if (pair.second == client_nick) {
+                    nick_exists = true;
+                    send_message(client_socket, "Nick jest już zajęty. Podaj inny:");
+                    break;
+                }
+            }
+
+            if (nick_exists) {
+                std::string new_nick;
+                if (!recv_message(client_socket, new_nick)){
+                    close(client_socket);
+                    return false;
+                }
+                client_nick = new_nick;
             }
         }
-
-        if (nick_exists) {
-            send_message(client_socket, "Nick jest już zajęty. Rozłączanie...");
-            close(client_socket);
-            return false;
-        }
-
         client_nicks[client_socket] = client_nick;
+        send_message(client_socket, "Nick zaakceptowany.");
     }
 
     std::cout << client_nick << " dołączył do serwera." << std::endl; // do wywalenia
