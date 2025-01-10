@@ -7,6 +7,8 @@
 #include "Widok_Login.h"
 #include "Widok_Choice.h"
 #include "Widok_Game.h"
+#include <vector>
+#include <string>
 
 class Application {
 public:
@@ -28,6 +30,11 @@ private:
 
     sf::TcpSocket tcpSocket;
     std::string currentRoom;
+
+    // Zmienne dla widoku gry
+    std::string password; // Aktualne hasło w grze
+    std::vector<std::string> playerNames; // Nazwy graczy w pokoju
+    std::vector<int> playerStages; // Etapy wisielca dla każdego gracza
 };
 
 #endif
