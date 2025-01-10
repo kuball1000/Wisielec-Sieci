@@ -2,6 +2,7 @@
 #define APPLICATION_H
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Network.hpp>
 #include "Resources.h"
 #include "Widok_Login.h"
 #include "Widok_Choice.h"
@@ -15,6 +16,8 @@ public:
 private:
     void handleEvents();
     void render();
+    bool connectToServer(const std::string& serverIp, unsigned short port);
+    bool sendMessage(const std::string& message);
 
     sf::RenderWindow window;
     enum class ViewState { Login, Choice1, Game } currentView;
@@ -23,6 +26,7 @@ private:
     Widok_Choice choiceView;
     Widok_Game gameView;
 
+    sf::TcpSocket tcpSocket;
     std::string currentRoom;
 };
 

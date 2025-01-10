@@ -10,6 +10,7 @@ public:
     bool handleEvent(const sf::Event& event);
     void render();
 
+    const std::string& getNick() const { return inputText; }
 private:
     sf::RenderWindow& window;
     sf::Text title;
