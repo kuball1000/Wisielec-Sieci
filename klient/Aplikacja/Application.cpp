@@ -8,7 +8,7 @@ Application::Application()
     : window(sf::VideoMode(800, 600), "SFML Application"),
       currentView(ViewState::Login),
       loginView(window),
-      choiceView(window),
+      choiceView(window, this),
       gameView(window),
       password("______"), // Przykładowe hasło
       playerNames({"Gracz1", "Gracz2", "Gracz3", "Gracz4"}),
@@ -201,7 +201,6 @@ void Application::handleEvents()
                             // Przetwarzanie odpowiedzi serwera
                             choiceView.parseAvailableRooms(lastMessage);
                         }
-                                                    sf::sleep(sf::milliseconds(1000));
 
                     }
                 }

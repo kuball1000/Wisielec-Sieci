@@ -19,12 +19,14 @@ public:
     ~Application();
     void run();
 
+    bool sendMessage(const std::string& message);
+    void receiveMessages();
+
 private:
     void handleEvents();
     void render();
     bool connectToServer(const std::string& serverIp, unsigned short port);
-    bool sendMessage(const std::string& message);
-    void receiveMessages();
+
 
     sf::RenderWindow window;
     enum class ViewState { Login, Choice1, Lobby, Game } currentView;

@@ -1,10 +1,11 @@
 #include "Widok_Choice.h"
 #include "Resources.h"
+#include "Application.h" 
 #include <iostream>
 #include <sstream>
 
 
-Widok_Choice::Widok_Choice(sf::RenderWindow &window) : window(window), currentState(State::MainView)
+Widok_Choice::Widok_Choice(sf::RenderWindow &window, Application* app) : window(window), application(app), currentState(State::MainView)
 {
     // Główny widok
     title.setFont(Resources::getFont());
@@ -127,6 +128,19 @@ bool Widok_Choice::handleEvent(const sf::Event &event, std::string &roomName)
                 if (roomButtons[i].getGlobalBounds().contains(mousePos))
                 {
                     roomName = roomNames[i];
+
+                    // Usunięcie wszystkiego po pierwszej spacji lub nawiasie
+                    size_t pos = roomName.find_first_of(" (");
+                    if (pos != std::string::npos) {
+                        roomName = roomName.substr(0, pos);
+                    }
+
+                    if (!application->sendMessage(roomName)) {
+                        std::cerr << "Błąd wysyłania nazwy pokoju na serwer: " << roomName << std::endl;
+                    } else {
+                        std::cout << "Wysłano nazwę pokoju: " << roomName << " na serwer." << std::endl;
+                    }
+
                     return true; // Przejście do widoku gry
                 }
             }

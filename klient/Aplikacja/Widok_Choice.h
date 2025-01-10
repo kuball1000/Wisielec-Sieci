@@ -5,9 +5,11 @@
 #include <vector>
 #include <string>
 
+class Application;
+
 class Widok_Choice {
 public:
-    explicit Widok_Choice(sf::RenderWindow& window);
+    explicit Widok_Choice(sf::RenderWindow& window, Application* app);
     bool handleEvent(const sf::Event& event, std::string& roomName);
     void render();
     void resetToMainView();
@@ -32,6 +34,7 @@ private:
 
     sf::RenderWindow& window;
     State currentState;
+    Application* application; 
 
     // Główny widok
     sf::Text title;
