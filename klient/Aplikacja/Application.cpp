@@ -1,11 +1,36 @@
 #include "Application.h"
+#include <iostream>
+#include <arpa/inet.h>
 
 Application::Application()
     : window(sf::VideoMode(800, 600), "SFML Application"),
       currentView(ViewState::Login),
       loginView(window),
       choiceView(window),
-      gameView(window) {}
+      gameView(window) {
+        if (!connectToServer("127.0.0.1", 12345)) {
+            std::cerr << "Nie udało się połączyć z serwerem." << std::endl;
+        }
+      }
+
+bool Application::connectToServer(const std::string& serverIp, unsigned short port) {
+    if (tcpSocket.connect(serverIp, port) == sf::Socket::Done) {
+        std::cout << "Połączono z serwerem na " << serverIp << ":" << port << std::endl;
+        return true;
+    }
+    return false;
+}
+
+bool Application::sendMessage(const std::string& message) {
+    uint32_t len = htonl(message.size());
+    if (tcpSocket.send(&len, sizeof(len)) != sf::Socket::Done) {
+        return false;
+    }
+    if (tcpSocket.send(message.c_str(), message.size()) != sf::Socket::Done) {
+        return false;
+    }
+    return true;
+}
 
 void Application::run() {
     while (window.isOpen()) {
@@ -23,6 +48,9 @@ void Application::handleEvents() {
         switch (currentView) {
             case ViewState::Login:
                 if (loginView.handleEvent(event)) {
+                    if (!sendMessage(loginView.getNick())) {
+                        std::cerr << "Błąd wysyłania nicka." << std::endl;
+                    }
                     currentView = ViewState::Choice1;
                 }
                 break;
