@@ -51,12 +51,19 @@ void Application::receiveMessages() {
         std::size_t received = 0;
 
         // Odbierz długość wiadomości
-        if (tcpSocket.receive(&len, sizeof(len), received) != sf::Socket::Done || received != sizeof(len)) {
+        sf::Socket::Status status = tcpSocket.receive(&len, sizeof(len), received);
+
+        if (status == sf::Socket::Disconnected) {
+            std::cerr << "Połączenie z serwerem zostało zamknięte." << std::endl;
+            running = false; // Wyłącz odbiornik
+            break;
+        } else if (status != sf::Socket::Done || received != sizeof(len)) {
             if (running) { // Jeśli flaga jest aktywna, zgłoś błąd
                 std::cerr << "Błąd podczas odbierania długości wiadomości." << std::endl;
             }
             continue;
         }
+
         len = ntohl(len);
 
         // Odbierz treść wiadomości
@@ -64,10 +71,17 @@ void Application::receiveMessages() {
         message.clear();
         while (len > 0) {
             std::size_t bytesReceived = 0;
-            if (tcpSocket.receive(buffer, std::min(len, static_cast<uint32_t>(sizeof(buffer))), bytesReceived) != sf::Socket::Done) {
+            status = tcpSocket.receive(buffer, std::min(len, static_cast<uint32_t>(sizeof(buffer))), bytesReceived);
+
+            if (status == sf::Socket::Disconnected) {
+                std::cerr << "Połączenie z serwerem zostało zamknięte." << std::endl;
+                running = false; // Wyłącz odbiornik
+                break;
+            } else if (status != sf::Socket::Done) {
                 std::cerr << "Błąd podczas odbierania wiadomości." << std::endl;
                 break;
             }
+            
             message.append(buffer, bytesReceived);
             len -= bytesReceived;
         }
