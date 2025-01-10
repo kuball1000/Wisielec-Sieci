@@ -1,6 +1,8 @@
 #include "Application.h"
 #include <iostream>
 #include <arpa/inet.h>
+#include "Widok_Choice.h"
+
 
 Application::Application()
     : window(sf::VideoMode(800, 600), "SFML Application"),
@@ -177,10 +179,35 @@ void Application::handleEvents()
             }
             break;
         case ViewState::Choice1:
-            if (choiceView.handleEvent(event, currentRoom))
-            {
-                if (choiceView.needsReset())
-                {
+            if (choiceView.handleEvent(event, currentRoom)) {
+                Widok_Choice::State choiceState = choiceView.getCurrentState();
+                std::cerr << static_cast<int>(choiceState) << std::endl;
+                if (choiceState == Widok_Choice::State::CreateRoomView) {
+                    if (!sendMessage("1")) {
+                        std::cerr << "Błąd wysyłania wiadomości o tworzeniu pokoju." << std::endl;
+                    }
+                } else if (choiceState == Widok_Choice::State::JoinRoomView) {
+                    if (!sendMessage("2")) {
+                        std::cerr << "Błąd wysyłania wiadomości o dołączaniu do pokoju." << std::endl;
+                    } else {
+                        waitingForResponse = true;
+                        while (waitingForResponse) {
+                            sf::sleep(sf::milliseconds(10));
+                        }
+                        {
+                            std::lock_guard<std::mutex> lock(messageMutex);
+                            std::cerr << "Odpowiedź serwera: " << lastMessage << std::endl;
+
+                            // Przetwarzanie odpowiedzi serwera
+                            choiceView.parseAvailableRooms(lastMessage);
+                        }
+                                                    sf::sleep(sf::milliseconds(1000));
+
+                    }
+                }
+
+                if (choiceView.needsReset()) {
+                    // Powrót do głównego widoku z Widok_Choice
                     choiceView.resetToMainView();
                 }
                 else if (!currentRoom.empty())
