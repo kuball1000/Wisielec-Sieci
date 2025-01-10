@@ -10,21 +10,41 @@ public:
     explicit Widok_Choice(sf::RenderWindow& window);
     bool handleEvent(const sf::Event& event, std::string& roomName);
     void render();
+    void resetToMainView();
+    bool needsReset() const;
+
     void renderCreateRoom();
     void renderJoinRoom(const std::vector<std::string>& roomNames);
 
 private:
+    enum class State {
+        MainView,
+        CreateRoomView,
+        JoinRoomView
+    };
+
     sf::RenderWindow& window;
+    State currentState;
+
+    // Główny widok
     sf::Text title;
     sf::RectangleShape createButton;
     sf::RectangleShape joinButton;
     sf::Text createButtonText;
     sf::Text joinButtonText;
 
+    // Widok tworzenia pokoju
     sf::RectangleShape inputBox;
-    sf::Text inputLabel;
-    std::string inputText;
+    sf::Text inputText;
+    std::string roomNameInput;
 
+    sf::RectangleShape confirmButton;
+    sf::Text confirmButtonText;
+
+    sf::RectangleShape backButton;
+    sf::Text backButtonText;
+
+    // Widok dołączania do pokoju
     std::vector<sf::RectangleShape> roomButtons;
     std::vector<sf::Text> roomButtonTexts;
 };

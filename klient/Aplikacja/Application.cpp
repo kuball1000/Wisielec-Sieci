@@ -28,7 +28,12 @@ void Application::handleEvents() {
                 break;
             case ViewState::Choice1:
                 if (choiceView.handleEvent(event, currentRoom)) {
-                    currentView = currentRoom.empty() ? ViewState::Choice1 : ViewState::Game;
+                    // Przechodzenie między widokami w ramach Widok_Choice
+                    if (choiceView.needsReset()) {
+                        choiceView.resetToMainView();
+                    } else if (!currentRoom.empty()) {
+                        currentView = ViewState::Game;
+                    }
                 }
                 break;
             case ViewState::Game:
