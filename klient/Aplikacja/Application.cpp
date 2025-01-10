@@ -170,6 +170,7 @@ void Application::handleEvents()
                     std::cerr << lastMessage << std::endl;
                     if (lastMessage == "Nick jest już zajęty. Podaj inny:")
                     {
+                        loginView.showErrorMessage("Nick jest juz zajety. Podaj inny");
                     }
                     else
                     {
