@@ -15,16 +15,20 @@ public:
 
     void renderCreateRoom();
     void renderJoinRoom();
+    void parseAvailableRooms(const std::string &serverResponse);
 
     // Dodajemy metodę do zarządzania listą pokoi
     void addRoom(const std::string& roomName);
 
-private:
     enum class State {
         MainView,
         CreateRoomView,
         JoinRoomView
     };
+
+    State getCurrentState() const { return currentState; }
+
+private:
 
     sf::RenderWindow& window;
     State currentState;

@@ -544,15 +544,16 @@ void handle_room_choice(int client_socket) {
 
         {
             std::lock_guard<std::mutex> lock(server_mutex);
+            std::string complete_message;
             for (const auto& [room_name, room] : rooms) {
-                std::string room_info = room_name + " (" + std::to_string(room->clients.size()) + "/4)\n";
-                send_message(client_socket, room_info);
+                complete_message += room_name + " (" + std::to_string(room->clients.size()) + "/4)\n";
             }
-        }
+            complete_message += "Podaj nazwę pokoju, do którego chcesz dołączyć: ";
 
-        if (!send_message(client_socket, "Podaj nazwę pokoju, do którego chcesz dołączyć: ")) {
-            close(client_socket);
-            return;
+            if (!send_message(client_socket, complete_message)) {
+                close(client_socket);
+                return;
+        }
         }
 
         std::string room_name;

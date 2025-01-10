@@ -1,5 +1,8 @@
 #include "Widok_Choice.h"
 #include "Resources.h"
+#include <iostream>
+#include <sstream>
+
 
 Widok_Choice::Widok_Choice(sf::RenderWindow &window) : window(window), currentState(State::MainView)
 {
@@ -78,10 +81,12 @@ bool Widok_Choice::handleEvent(const sf::Event &event, std::string &roomName)
             if (createButton.getGlobalBounds().contains(mousePos))
             {
                 currentState = State::CreateRoomView;
+                return true;
             }
             else if (joinButton.getGlobalBounds().contains(mousePos))
             {
                 currentState = State::JoinRoomView;
+                return true;
             }
         }
     }
@@ -213,4 +218,21 @@ void Widok_Choice::resetToMainView()
 {
     currentState = State::MainView;
     roomNameInput.clear();
+}
+
+void Widok_Choice::parseAvailableRooms(const std::string &serverResponse) {
+    roomNames.clear(); // Wyczyść listę pokoi przed dodaniem nowych
+
+    std::istringstream stream(serverResponse);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        if (line.find("Podaj nazwę pokoju") != std::string::npos) {
+            break; // Koniec listy pokoi
+        }
+
+        // Dodaj linię do listy pokoi (usuń ewentualne białe znaki na końcu)
+        roomNames.push_back(line);
+
+    }
 }
