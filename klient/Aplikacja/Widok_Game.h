@@ -9,8 +9,10 @@ class Widok_Game {
 public:
     explicit Widok_Game(sf::RenderWindow& window);
 
-    bool handleEvent(const sf::Event& event);
-    void render(const std::string& roomName, const std::string& password, const std::vector<std::string>& playerNames, const std::vector<int>& playerStages);
+    bool handleLobbyEvent(const sf::Event& event); // Obsługa zdarzeń w widoku lobby
+    bool handleGameEvent(const sf::Event& event); // Obsługa zdarzeń w widoku gry
+    void renderLobby(const std::vector<std::string>& playerNames); // Renderowanie widoku lobby
+    void renderGame(const std::string& roomName, const std::string& password, const std::vector<std::string>& playerNames, const std::vector<int>& playerStages); // Renderowanie widoku gry
 
 private:
     sf::RenderWindow& window;
@@ -18,12 +20,17 @@ private:
     sf::RectangleShape backButton;
     sf::Text backButtonText;
 
+    // Lobby specific elements
+    sf::RectangleShape startGameButton;
+    sf::Text startGameButtonText;
+    sf::Text lobbyPlayersText;
+
     // Gracze
     sf::Text playerLabels[4];
     sf::Text hangmanStages[4];
 
     // Hasło
-    sf::Text passwordTitleLabel; 
+    sf::Text passwordTitleLabel; // Dodano etykietę "Hasło:"
     sf::Text passwordLabel;
 
     // Input box
@@ -46,6 +53,9 @@ private:
     // Komunikaty serwera
     sf::Text serverMessagesLabel;
     std::string serverMessages;
+
+    bool backAction = false; // Flaga sygnalizująca powrót do wyboru pokoju
+    bool startGameAction = false; // Flaga sygnalizująca rozpoczęcie gry
 };
 
 #endif

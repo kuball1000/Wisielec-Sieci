@@ -27,7 +27,7 @@ private:
     void receiveMessages();
 
     sf::RenderWindow window;
-    enum class ViewState { Login, Choice1, Game } currentView;
+    enum class ViewState { Login, Choice1, Lobby, Game } currentView;
 
     Widok_Login loginView;
     Widok_Choice choiceView;

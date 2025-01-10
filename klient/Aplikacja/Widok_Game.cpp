@@ -1,7 +1,8 @@
 #include "Widok_Game.h"
 #include "Resources.h"
 
-Widok_Game::Widok_Game(sf::RenderWindow& window) : window(window), lives(5) {
+Widok_Game::Widok_Game(sf::RenderWindow& window)
+    : window(window), lives(5), backAction(false), startGameAction(false) {
     // Room title
     roomTitle.setFont(Resources::getFont());
     roomTitle.setCharacterSize(24);
@@ -19,7 +20,24 @@ Widok_Game::Widok_Game(sf::RenderWindow& window) : window(window), lives(5) {
     backButtonText.setFillColor(sf::Color::White);
     backButtonText.setPosition(65, 510);
 
-    // Players and hangman stages
+    // Start game button
+    startGameButton.setSize(sf::Vector2f(150, 40));
+    startGameButton.setFillColor(sf::Color(0, 128, 0));
+    startGameButton.setPosition(600, 500);
+
+    startGameButtonText.setFont(Resources::getFont());
+    startGameButtonText.setString("Rozpocznij gre");
+    startGameButtonText.setCharacterSize(20);
+    startGameButtonText.setFillColor(sf::Color::White);
+    startGameButtonText.setPosition(610, 510);
+
+    // Lobby players text
+    lobbyPlayersText.setFont(Resources::getFont());
+    lobbyPlayersText.setCharacterSize(20);
+    lobbyPlayersText.setFillColor(sf::Color::Black);
+    lobbyPlayersText.setPosition(300, 200);
+
+    // Game-related UI elements (hidden in lobby)
     for (int i = 0; i < 4; ++i) {
         playerLabels[i].setFont(Resources::getFont());
         playerLabels[i].setCharacterSize(18);
@@ -32,14 +50,12 @@ Widok_Game::Widok_Game(sf::RenderWindow& window) : window(window), lives(5) {
         hangmanStages[i].setPosition(50 + i * 200, 150);
     }
 
-    // Password label
     passwordTitleLabel.setFont(Resources::getFont());
     passwordTitleLabel.setCharacterSize(24);
     passwordTitleLabel.setFillColor(sf::Color::Black);
     passwordTitleLabel.setString("Haslo:");
     passwordTitleLabel.setPosition(520, 400);
 
-    // Password
     passwordLabel.setFont(Resources::getFont());
     passwordLabel.setCharacterSize(24);
     passwordLabel.setFillColor(sf::Color::Black);
@@ -83,36 +99,94 @@ Widok_Game::Widok_Game(sf::RenderWindow& window) : window(window), lives(5) {
     serverMessagesLabel.setCharacterSize(18);
     serverMessagesLabel.setFillColor(sf::Color::Black);
     serverMessagesLabel.setPosition(50, 450);
+
 }
 
-bool Widok_Game::handleEvent(const sf::Event& event) {
+bool Widok_Game::handleLobbyEvent(const sf::Event& event) {
     if (event.type == sf::Event::MouseButtonPressed) {
         sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
+
         if (backButton.getGlobalBounds().contains(mousePos)) {
-            return true; // Signal to return to choice view
-        } else if (sendButton.getGlobalBounds().contains(mousePos)) {
-            // Logic for sending the letter
+            backAction = true; // Ustawienie flagi powrotu
+            return true;       // Powrót do poprzedniego widoku
+        }
+
+        if (startGameButton.getGlobalBounds().contains(mousePos)) {
+            startGameAction = true; // Ustawienie flagi rozpoczęcia gry
+            return true;            // Przejście do widoku gry
+        }
+    }
+
+    return false;
+}
+
+bool Widok_Game::handleGameEvent(const sf::Event& event) {
+    if (event.type == sf::Event::MouseButtonPressed) {
+        sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
+
+        // Obsługa przycisku "Powrót"
+        if (backButton.getGlobalBounds().contains(mousePos)) {
+            return true; // Powrót do wyboru pokoju
+        }
+
+        // Obsługa przycisku "Wyślij"
+        if (sendButton.getGlobalBounds().contains(mousePos)) {
             if (!enteredLetter.empty()) {
-                usedLetters += enteredLetter + " ";
+                // Dodaj literę do użytych liter
+                if (usedLetters.find(enteredLetter) == std::string::npos) {
+                    usedLetters += enteredLetter + " ";
+                }
+
+                // Wyślij literę do serwera (zależnie od implementacji)
+                // sendToServer(enteredLetter);
+
+                // Wyczyść pole tekstowe
                 enteredLetter.clear();
             }
         }
-    } else if (event.type == sf::Event::TextEntered) {
+    } 
+    else if (event.type == sf::Event::TextEntered) {
         if (event.text.unicode == 8 && !enteredLetter.empty()) { // Backspace
             enteredLetter.pop_back();
         } else if (event.text.unicode >= 'a' && event.text.unicode <= 'z') {
             enteredLetter = static_cast<char>(event.text.unicode);
         }
     }
+
     return false;
 }
 
-void Widok_Game::render(const std::string& roomName, const std::string& password, const std::vector<std::string>& playerNames, const std::vector<int>& playerStages) {
+
+
+void Widok_Game::renderLobby(const std::vector<std::string>& playerNames) {
+    // Room title
+    roomTitle.setString("Lobby: Oczekiwanie na graczy");
+    window.draw(roomTitle);
+
+    // Display players in the lobby
+    std::string playersList = "Gracze w pokoju:\n";
+    for (const auto& player : playerNames) {
+        playersList += player + "\n";
+    }
+    lobbyPlayersText.setString(playersList);
+    window.draw(lobbyPlayersText);
+
+    // Render buttons
+    window.draw(backButton);
+    window.draw(backButtonText);
+
+    window.draw(startGameButton);
+    window.draw(startGameButtonText);
+}
+
+void Widok_Game::renderGame(const std::string& roomName, const std::string& password,
+                            const std::vector<std::string>& playerNames,
+                            const std::vector<int>& playerStages) {
     // Room title
     roomTitle.setString("Pokoj: " + roomName);
     window.draw(roomTitle);
 
-    // Players and their stages
+    // Render players and hangman stages
     const auto& hangmanStagesData = Resources::getHangmanStages();
     for (size_t i = 0; i < playerNames.size(); ++i) {
         playerLabels[i].setString(playerNames[i]);
@@ -122,33 +196,33 @@ void Widok_Game::render(const std::string& roomName, const std::string& password
         window.draw(hangmanStages[i]);
     }
 
-    // Password title and password
+    // Render password
     window.draw(passwordTitleLabel);
     passwordLabel.setString(password);
     window.draw(passwordLabel);
 
-    // Input box
+     // Render input box
     window.draw(inputBox);
     inputText.setString(enteredLetter);
     window.draw(inputText);
 
-    // Send button
+    // Render send button
     window.draw(sendButton);
     window.draw(sendButtonText);
 
-    // Lives remaining
+    // Render lives remaining
     livesLabel.setString("Zycia: " + std::to_string(lives));
     window.draw(livesLabel);
 
-    // Used letters
+    // Render used letters
     usedLettersLabel.setString("Uzyte litery: " + usedLetters);
     window.draw(usedLettersLabel);
 
-    // Server messages
+    // Render server messages
     serverMessagesLabel.setString("Wiadomosci serwera: " + serverMessages);
     window.draw(serverMessagesLabel);
 
-    // Back button
+    // Render back button
     window.draw(backButton);
     window.draw(backButtonText);
 }
