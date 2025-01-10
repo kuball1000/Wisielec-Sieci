@@ -10,7 +10,7 @@ Application::Application()
       gameView(window),
       password("______"), // Przykładowe hasło
       playerNames({"Gracz1", "Gracz2", "Gracz3", "Gracz4"}),
-      playerStages({4, 5, 6, 3})
+      playerStages({4, 5, 6, 3}),
       running(true) {
         if (!connectToServer("127.0.0.1", 12345)) {
             std::cerr << "Nie udało się połączyć z serwerem." << std::endl;
