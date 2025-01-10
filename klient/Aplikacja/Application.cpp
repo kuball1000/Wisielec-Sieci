@@ -87,7 +87,12 @@ void Application::receiveMessages() {
         }
 
         if (!message.empty()) {
+            {
+            std::lock_guard<std::mutex> lock(messageMutex); // Zablokuj mutex
+            lastMessage = message; // Zaktualizuj wiadomość
+            }
             std::cout << "Serwer: " << message << std::endl;
+            waitingForResponse = false;
         }
     }
 }
@@ -110,8 +115,27 @@ void Application::handleEvents() {
                 if (loginView.handleEvent(event)) {
                     if (!sendMessage(loginView.getNick())) {
                         std::cerr << "Błąd wysyłania nicka." << std::endl;
+                    } else {
+
+                        waitingForResponse = true;
+
+                        while (waitingForResponse) {
+                            sf::sleep(sf::milliseconds(10)); // Mała przerwa, aby odciążyć CPU
+                        }
+
+                        std::string message;
+                        {
+                            std::lock_guard<std::mutex> lock(messageMutex); // Zablokuj mutex
+                            message = lastMessage;
+                        }
+
+                        // Oczekuj odpowiedzi serwera
+                        std::cerr << lastMessage << std::endl;
+                        if (lastMessage == "Nick jest już zajęty. Podaj inny:") {
+                        } else {
+                            currentView = ViewState::Choice1;
+                        }
                     }
-                    currentView = ViewState::Choice1;
                 }
                 break;
             case ViewState::Choice1:

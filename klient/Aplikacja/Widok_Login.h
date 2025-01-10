@@ -3,6 +3,7 @@
 
 #include <SFML/Graphics.hpp>
 #include "Resources.h"
+#include <string>
 
 class Widok_Login {
 public:

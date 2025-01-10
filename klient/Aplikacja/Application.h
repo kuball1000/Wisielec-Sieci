@@ -9,6 +9,7 @@
 #include "Widok_Login.h"
 #include "Widok_Choice.h"
 #include "Widok_Game.h"
+#include <mutex>
 
 class Application {
 public:
@@ -35,6 +36,10 @@ private:
     std::atomic<bool> running;
     
     std::string currentRoom;
+    std::string lastMessage;
+    std::mutex messageMutex;
+    std::atomic<bool> waitingForResponse = false; // Flaga oczekiwania na odpowiedź
+
 };
 
 #endif
