@@ -145,8 +145,13 @@ void Application::handleEvents()
     while (window.pollEvent(event))
     {
         if (event.type == sf::Event::Closed)
+        {
             window.close();
-
+             if (!sendMessage("/exit"))
+            {
+                std::cerr << "Błąd wysyłania wiadomości /exit do serwera." << std::endl;
+            }
+        }
         switch (currentView)
         {
         case ViewState::Login:
@@ -176,6 +181,7 @@ void Application::handleEvents()
                     std::cerr << lastMessage << std::endl;
                     if (lastMessage == "Nick jest już zajęty. Podaj inny:")
                     {
+                        loginView.showErrorMessage("Nick jest juz zajety. Podaj inny");
                     }
                     else
                     {
@@ -188,10 +194,12 @@ void Application::handleEvents()
             if (choiceView.handleEvent(event, currentRoom)) {
                 Widok_Choice::State choiceState = choiceView.getCurrentState();
                 if (choiceState == Widok_Choice::State::CreateRoomView) {
+                    lobbyflag = true;
                     if (!sendMessage("1")) {
                         std::cerr << "Błąd wysyłania wiadomości o tworzeniu pokoju." << std::endl;
                     }
                 } else if (choiceState == Widok_Choice::State::JoinRoomView) {
+                    lobbyflag = false;
                     if (!sendMessage("2")) {
                         std::cerr << "Błąd wysyłania wiadomości o dołączaniu do pokoju." << std::endl;
                     } else {
@@ -259,8 +267,7 @@ void Application::render()
         gameView.renderGame(currentRoom, password, playerNames, playerStages);
         break;
     case ViewState::Lobby:
-        // std::cout << playerNames << std::endl;
-        gameView.renderLobby(playerNames);
+        gameView.renderLobby(playerNames,lobbyflag);
         break;
     }
 

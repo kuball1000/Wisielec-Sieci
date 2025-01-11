@@ -158,7 +158,7 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
 
 
 
-void Widok_Game::renderLobby(const std::vector<std::string>& playerNames) {
+void Widok_Game::renderLobby(const std::vector<std::string>& playerNames,bool flag) {
     // Room title
     roomTitle.setString("Lobby: Oczekiwanie na graczy");
     window.draw(roomTitle);
@@ -175,8 +175,11 @@ void Widok_Game::renderLobby(const std::vector<std::string>& playerNames) {
     window.draw(backButton);
     window.draw(backButtonText);
 
-    window.draw(startGameButton);
-    window.draw(startGameButtonText);
+    if (flag) {
+        window.draw(startGameButton);
+        window.draw(startGameButtonText);
+    }
+
 }
 
 void Widok_Game::renderGame(const std::string& roomName, const std::string& password,

@@ -27,6 +27,7 @@ private:
     void handleEvents();
     void render();
     bool connectToServer(const std::string& serverIp, unsigned short port);
+    bool lobbyflag;
 
 
     sf::RenderWindow window;
