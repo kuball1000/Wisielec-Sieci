@@ -22,7 +22,7 @@ public:
     bool sendMessage(const std::string& message);
     void receiveMessages();
     void updatePlayerList(const std::string &serverMessage);
-
+    void  parseServerMessage(const std::string &message);
 private:
     void handleEvents();
     void render();
@@ -51,6 +51,10 @@ private:
     std::string password; // Aktualne hasło w grze
     std::vector<std::string> playerNames; // Nazwy graczy w pokoju
     std::vector<int> playerStages; // Etapy wisielca dla każdego gracza
+    std::string usedLetters;                  // Przechowuje niepoprawne litery
+    int lives;                                // Liczba pozostałych prób
+    std::vector<int> playerScores;            // Lista wyników graczy
+    std::string serverMessages; 
 };
 
 #endif
