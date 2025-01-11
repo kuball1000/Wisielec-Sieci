@@ -1,5 +1,6 @@
 #include "Widok_Game.h"
 #include "Resources.h"
+#include <iostream>
 
 Widok_Game::Widok_Game(sf::RenderWindow& window)
     : window(window), lives(5), backAction(false), startGameAction(false) {
@@ -183,6 +184,7 @@ void Widok_Game::renderLobby(const std::vector<std::string>& playerNames,bool fl
 }
 
 void Widok_Game::renderGame(const std::string& roomName, const std::string& password,
+                            const std::string& usedLetters, int lives,
                             const std::vector<std::string>& playerNames,
                             const std::vector<int>& playerStages) {
     // Room title

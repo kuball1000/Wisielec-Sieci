@@ -11,9 +11,9 @@ Application::Application()
       loginView(window),
       choiceView(window, this),
       gameView(window),
-      password("______"), // Przykładowe hasło
+      password(""), // Przykładowe hasło
       playerNames({}),
-      playerStages({4, 5, 6, 3}),
+      playerStages({0,0,0,0}),
       running(true)
 {
     if (!connectToServer("127.0.0.1", 12345))
@@ -125,6 +125,15 @@ void Application::receiveMessages()
                 updatePlayerList(message); // Zaktualizuj listę graczy
             }
 
+            if (message.find("Gra rozpoczyna się!") != std::string::npos ) { //current view nie dziala ale tak moze zostac imo
+                std::cout << "Gra została rozpoczęta!" << std::endl;
+                currentView = ViewState::Game; // Przejdź do widoku gry
+            }
+
+            if (currentView == ViewState::Game) { //current view nie dziala ale tak moze zostac imo
+                parseServerMessage(message);
+            }
+        
             waitingForResponse = false;
         }
     }
@@ -234,6 +243,9 @@ void Application::handleEvents()
         case ViewState::Lobby:
             if (gameView.handleLobbyEvent(event))
             {                                  // Obsługa zdarzeń w Lobby
+                if (!sendMessage("/start")) {
+                    std::cerr << "Błąd wysyłania wiadomości o startu gry." << std::endl;
+                }
                 currentView = ViewState::Game; // Przejście do widoku gry po kliknięciu "Start Game"
             }
             else if (gameView.handleLobbyEvent(event))
@@ -264,7 +276,8 @@ void Application::render()
         choiceView.render();
         break;
     case ViewState::Game:
-        gameView.renderGame(currentRoom, password, playerNames, playerStages);
+        playerStages.resize(playerNames.size(), 0); // Ustaw zerowe etapy dla każdego gracza
+        gameView.renderGame(currentRoom, password, usedLetters, lives, playerNames, playerStages);
         break;
     case ViewState::Lobby:
         gameView.renderLobby(playerNames,lobbyflag);
@@ -276,7 +289,6 @@ void Application::render()
 
 void Application::updatePlayerList(const std::string &serverMessage)
 {
-    std::cout << "elo: " << serverMessage << std::endl;
     playerNames.clear(); // Wyczyść listę graczy
 
     std::istringstream stream(serverMessage);
@@ -292,4 +304,80 @@ void Application::updatePlayerList(const std::string &serverMessage)
             playerNames.push_back(line); // Dodaj każdego gracza do listy
         }
     }
+}
+
+void Application::parseServerMessage(const std::string &message)
+{
+    std::istringstream stream(message);
+    std::string line;
+
+    while (std::getline(stream, line))
+    {
+        if (line.find("Hasło:") != std::string::npos)
+        {
+            this->password = line.substr(line.find(":") + 2);
+        }
+        else if (line.find("Niepoprawne litery:") != std::string::npos)
+        {
+            this->usedLetters = line.substr(line.find(":") + 2);
+        }
+        else if (line.find("Pozostałe próby:") != std::string::npos)
+        {
+            this->lives = std::stoi(line.substr(line.find(":") + 2));
+        }
+        else if (line.find("Stan graczy w pokoju:") != std::string::npos)
+        {
+            // Wyodrębnianie danych o graczach
+            std::string playersData = line.substr(line.find("[") + 1, line.find("]") - line.find("[") - 1);
+
+            std::istringstream playersStream(playersData);
+            std::string playerEntry;
+
+            while (std::getline(playersStream, playerEntry, ','))
+            {
+                // Usunięcie niepotrzebnych nawiasów i spacji
+                playerEntry.erase(std::remove(playerEntry.begin(), playerEntry.end(), '('), playerEntry.end());
+                playerEntry.erase(std::remove(playerEntry.begin(), playerEntry.end(), ')'), playerEntry.end());
+                playerEntry.erase(std::remove(playerEntry.begin(), playerEntry.end(), ' '), playerEntry.end());
+
+                // Podział na nick i wynik
+                size_t separator = playerEntry.find(',');
+                if (separator != std::string::npos)
+                {
+                    std::string playerName = playerEntry.substr(0, separator);
+                    int playerStage = std::stoi(playerEntry.substr(separator + 1));
+
+                    // Aktualizacja listy graczy i ich etapów
+                    auto it = std::find(playerNames.begin(), playerNames.end(), playerName);
+                    if (it != playerNames.end())
+                    {
+                        // Gracz istnieje – aktualizujemy jego etap
+                        size_t index = std::distance(playerNames.begin(), it);
+                        playerStages[index] = playerStage;
+                    }
+                    else
+                    {
+                        // Gracz nie istnieje – dodajemy nowego
+                        playerNames.push_back(playerName);
+                        playerStages.push_back(playerStage);
+                    }
+                }
+            }
+
+        }
+    }
+
+    // Aktualizacja serwerowych wiadomości
+    serverMessages = message;
+
+    // Logowanie danych dla debugowania
+    // std::cout << "Zaktualizowane dane: " << std::endl;
+    // std::cout << "Hasło: " << password << std::endl;
+    // std::cout << "Niepoprawne litery: " << usedLetters << std::endl;
+    // std::cout << "Pozostałe próby: " << lives << std::endl;
+    // std::cout << "Stan graczy w pokoju: " << std::endl;
+    // for (size_t i = 0; i < playerNames.size(); ++i)
+    // {
+    //     std::cout << playerNames[i] << ": " << playerScores[i] << std::endl;
+    // }
 }
