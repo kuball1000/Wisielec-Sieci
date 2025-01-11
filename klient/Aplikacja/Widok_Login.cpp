@@ -3,7 +3,7 @@
 Widok_Login::Widok_Login(sf::RenderWindow& window) : window(window), buttonPressed(false) {
     // Title
     title.setFont(Resources::getFont());
-    title.setString("Podaj swój nick:");
+    title.setString("Podaj swoj nick:");
     title.setCharacterSize(24);
     title.setPosition(300, 100);
     title.setFillColor(sf::Color::Black);
