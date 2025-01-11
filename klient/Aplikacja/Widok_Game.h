@@ -11,7 +11,7 @@ public:
 
     bool handleLobbyEvent(const sf::Event& event); // Obsługa zdarzeń w widoku lobby
     bool handleGameEvent(const sf::Event& event); // Obsługa zdarzeń w widoku gry
-    void renderLobby(const std::vector<std::string>& playerNames); // Renderowanie widoku lobby
+    void renderLobby(const std::vector<std::string>& playerNames,bool flag); // Renderowanie widoku lobby
     void renderGame(const std::string& roomName, const std::string& password, const std::vector<std::string>& playerNames, const std::vector<int>& playerStages); // Renderowanie widoku gry
 
 private:
