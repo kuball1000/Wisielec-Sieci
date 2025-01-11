@@ -21,6 +21,7 @@ public:
 
     bool sendMessage(const std::string& message);
     void receiveMessages();
+    void updatePlayerList(const std::string &serverMessage);
 
 private:
     void handleEvents();
