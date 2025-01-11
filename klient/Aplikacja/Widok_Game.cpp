@@ -133,9 +133,14 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
         // Obsługa przycisku "Wyślij"
         if (sendButton.getGlobalBounds().contains(mousePos)) {
             if (!enteredLetter.empty()) {
+                 serverMessages = ""; // Wyczyść komunikaty serwera
                 // Dodaj literę do użytych liter
-                if (usedLetters.find(enteredLetter) == std::string::npos) {
+                if (usedLetters.find(enteredLetter) == std::string::npos && passwordLabel.getString().toAnsiString().find(enteredLetter) == std::string::npos) {
                     usedLetters += enteredLetter + " ";
+                }
+                else{
+                    serverMessages = "Litera " + enteredLetter + " juz zostala uzyta!";
+                    return false;   
                 }
 
                 // Wyślij literę do serwera (zależnie od implementacji)
@@ -159,9 +164,9 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
 
 
 
-void Widok_Game::renderLobby(const std::vector<std::string>& playerNames,bool flag) {
+void Widok_Game::renderLobby(const std::vector<std::string>& playerNames,bool flag,const std::string& roomName) {
     // Room title
-    roomTitle.setString("Lobby: Oczekiwanie na graczy");
+    roomTitle.setString("Lobby: " +roomName); 
     window.draw(roomTitle);
 
     // Display players in the lobby
@@ -176,7 +181,8 @@ void Widok_Game::renderLobby(const std::vector<std::string>& playerNames,bool fl
     window.draw(backButton);
     window.draw(backButtonText);
 
-    if (flag) {
+
+    if (flag && playerNames.size() > 1) {
         window.draw(startGameButton);
         window.draw(startGameButtonText);
     }

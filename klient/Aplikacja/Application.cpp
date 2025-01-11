@@ -280,7 +280,7 @@ void Application::render()
         gameView.renderGame(currentRoom, password, usedLetters, lives, playerNames, playerStages);
         break;
     case ViewState::Lobby:
-        gameView.renderLobby(playerNames,lobbyflag);
+        gameView.renderLobby(playerNames,lobbyflag,currentRoom);
         break;
     }
 
