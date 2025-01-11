@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
+#include <iostream>
 
 class Widok_Game {
 public:
@@ -13,6 +14,7 @@ public:
     bool handleGameEvent(const sf::Event& event); // Obsługa zdarzeń w widoku gry
     void renderLobby(const std::vector<std::string>& playerNames); // Renderowanie widoku lobby
     void renderGame(const std::string& roomName, const std::string& password, const std::vector<std::string>& playerNames, const std::vector<int>& playerStages); // Renderowanie widoku gry
+    // void updatePlayerList(const std::string& serverMessage);
 
 private:
     sf::RenderWindow& window;

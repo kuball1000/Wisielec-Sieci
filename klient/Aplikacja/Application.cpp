@@ -2,6 +2,7 @@
 #include <iostream>
 #include <arpa/inet.h>
 #include "Widok_Choice.h"
+#include <sstream>
 
 
 Application::Application()
@@ -11,7 +12,7 @@ Application::Application()
       choiceView(window, this),
       gameView(window),
       password("______"), // Przykładowe hasło
-      playerNames({"Gracz1", "Gracz2", "Gracz3", "Gracz4"}),
+      playerNames({}),
       playerStages({4, 5, 6, 3}),
       running(true)
 {
@@ -112,13 +113,18 @@ void Application::receiveMessages()
             len -= bytesReceived;
         }
 
-        if (!message.empty())
-        {
+        if (!message.empty()) {
             {
                 std::lock_guard<std::mutex> lock(messageMutex); // Zablokuj mutex
                 lastMessage = message;                          // Zaktualizuj wiadomość
             }
             std::cout << "Serwer: " << message << std::endl;
+            if (message.find("Gracze w pokoju:") != std::string::npos ) { //current view nie dziala ale tak moze zostac imo
+                    std::cout << "Aktualizowanie listy graczy..." << std::endl;
+
+                updatePlayerList(message); // Zaktualizuj listę graczy
+            }
+
             waitingForResponse = false;
         }
     }
@@ -181,7 +187,6 @@ void Application::handleEvents()
         case ViewState::Choice1:
             if (choiceView.handleEvent(event, currentRoom)) {
                 Widok_Choice::State choiceState = choiceView.getCurrentState();
-                std::cerr << static_cast<int>(choiceState) << std::endl;
                 if (choiceState == Widok_Choice::State::CreateRoomView) {
                     if (!sendMessage("1")) {
                         std::cerr << "Błąd wysyłania wiadomości o tworzeniu pokoju." << std::endl;
@@ -211,6 +216,8 @@ void Application::handleEvents()
                 }
                 else if (!currentRoom.empty())
                 {
+                        std::cout << "Przejście do Lobby. Pokój: " << currentRoom << std::endl;
+
                     currentView = ViewState::Lobby; // Przejście do Lobby po stworzeniu pokoju
                 }
             }
@@ -252,9 +259,30 @@ void Application::render()
         gameView.renderGame(currentRoom, password, playerNames, playerStages);
         break;
     case ViewState::Lobby:
+        // std::cout << playerNames << std::endl;
         gameView.renderLobby(playerNames);
         break;
     }
 
     window.display();
+}
+
+void Application::updatePlayerList(const std::string &serverMessage)
+{
+    std::cout << "elo: " << serverMessage << std::endl;
+    playerNames.clear(); // Wyczyść listę graczy
+
+    std::istringstream stream(serverMessage);
+    std::string line;
+
+    // Pomijamy linię "Gracze w pokoju:"
+    std::getline(stream, line);
+
+    while (std::getline(stream, line))
+    {
+        if (!line.empty())
+        {
+            playerNames.push_back(line); // Dodaj każdego gracza do listy
+        }
+    }
 }

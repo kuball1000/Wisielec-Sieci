@@ -111,9 +111,9 @@ bool Widok_Choice::handleEvent(const sf::Event &event, std::string &roomName)
                 roomName = roomNameInput;
                 addRoom(roomName); // Dodajemy nowy pokój do listy
                 if (!application->sendMessage(roomName)) {
-                    std::cerr << "Błąd wysyłania nazwy pokoju na serwer: " << roomName << std::endl;
+                    // std::cerr << "Błąd wysyłania nazwy pokoju na serwer: " << roomName << std::endl;
                 } else {
-                    std::cout << "Wysłano nazwę pokoju: " << roomName << " na serwer." << std::endl;
+                    // std::cout << "Wysłano nazwę pokoju: " << roomName << " na serwer." << std::endl;
                 }
 
                 return true;       // Przejście do widoku gry
