@@ -152,12 +152,40 @@ void handle_client_game(int client_socket) {
             }
 
             std::string guessed_char;
-            if (!recv_message(client_socket, guessed_char) || guessed_char.empty()) {
-                {
-                    std::lock_guard<std::mutex> lock(room_mutex);
-                    clients.erase(client_socket);
+            while (true) {
+                if (!recv_message(client_socket, guessed_char) || guessed_char.empty()) {
+                    {
+                        std::lock_guard<std::mutex> lock(room_mutex);
+                        clients.erase(client_socket);
+                    }
+                    return; // Klient rozłączył się
                 }
-                return; // Klient rozłączył się
+
+                // Sprawdzanie, czy znak jest cyfrą
+                if (guessed_char.size() == 1 && std::isdigit(guessed_char[0])) {
+                    if (!send_message(client_socket, "Nie możesz podać cyfry. Podaj literę: ")) {
+                        {
+                            std::lock_guard<std::mutex> lock(room_mutex);
+                            clients.erase(client_socket);
+                        }
+                        return; // Klient rozłączył się
+                    }
+                    continue; // Powtarzaj pętlę do momentu otrzymania poprawnej odpowiedzi
+                }
+
+                // Sprawdzanie, czy znak jest literą
+                if (guessed_char.size() == 1 && std::isalpha(guessed_char[0])) {
+                    break; // Otrzymano poprawny znak, zakończ pętlę
+                }
+
+                // Jeśli znak jest niepoprawny (nie litera, nie cyfra), wyślij komunikat
+                if (!send_message(client_socket, "Niepoprawny znak. Podaj literę: ")) {
+                    {
+                        std::lock_guard<std::mutex> lock(room_mutex);
+                        clients.erase(client_socket);
+                    }
+                    return; // Klient rozłączył się
+                }
             }
 
             char letter = guessed_char[0];
