@@ -132,9 +132,14 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
         // Obsługa przycisku "Wyślij"
         if (sendButton.getGlobalBounds().contains(mousePos)) {
             if (!enteredLetter.empty()) {
+                 serverMessages = ""; // Wyczyść komunikaty serwera
                 // Dodaj literę do użytych liter
-                if (usedLetters.find(enteredLetter) == std::string::npos) {
+                if (usedLetters.find(enteredLetter) == std::string::npos & passwordLabel.getString().toAnsiString().find(enteredLetter) == std::string::npos) {
                     usedLetters += enteredLetter + " ";
+                }
+                else{
+                    serverMessages = "Litera " + enteredLetter + " juz zostala uzyta!";
+                    return false;   
                 }
 
                 // Wyślij literę do serwera (zależnie od implementacji)
