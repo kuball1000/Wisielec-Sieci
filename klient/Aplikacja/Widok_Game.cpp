@@ -199,7 +199,7 @@ void Widok_Game::renderLobby(const std::vector<std::string>& playerNames,bool fl
 void Widok_Game::renderGame(const std::string& roomName, const std::string& password,
                             const std::string& usedLetters, int lives,
                             const std::vector<std::string>& playerNames,
-                            const std::vector<int>& playerStages) {
+                            const std::vector<int>& playerStages, const std::string& serverMessages) {
     // Room title
     roomTitle.setString("Pokoj: " + roomName);
     window.draw(roomTitle);
