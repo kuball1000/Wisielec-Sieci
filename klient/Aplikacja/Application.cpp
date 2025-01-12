@@ -458,8 +458,24 @@ void Application::parseServerMessage(const std::string &message)
 
             _serverMessages = line + " Nowa gra zaraz sie rozpocznie!";
             needsRender = true;
-        // }
+    } else if (line.find("Zostałeś ostatnim graczem w pokoju. Wygrywasz.") != std::string::npos) {
+            playerStagesInitialized = false;
+
+            _serverMessages = "Zostales ostatnim graczem w pokoju, nastepuje rozlaczanie...";
+            sf::sleep(sf::milliseconds(5000));
+
+
+            window.close();
+            if (!sendMessage("/exit")) {
+                std::cerr << "Błąd wysyłania wiadomości /exit do serwera." << std::endl;
+            }
+    } else if (line.find("Przegrałeś! Hasło to: ") != std::string::npos) {
+            playerStagesInitialized = false;
+
+            _serverMessages = "Przegrales! Zuzyles wszystkie zycia!";
+            needsRender = true;
     }
+
 
 
 

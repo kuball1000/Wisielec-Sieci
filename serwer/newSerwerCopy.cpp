@@ -160,6 +160,16 @@ void handle_client_game(int client_socket) {
                     }
                     return; // Klient rozłączył się
                 }
+                std::cout << guessed_char << std::endl;
+                if (guessed_char == "/exit") {
+                    std::cout << "Klient wysłał /exit. Zamykam socket: " << client_socket << std::endl;
+                    close(client_socket); // Zamknięcie socketu klienta
+                    {
+                        std::lock_guard<std::mutex> lock(room_mutex);
+                        clients.erase(client_socket);
+                    }
+                    return; 
+                }
 
                 // Sprawdzanie, czy znak jest cyfrą
                 if (guessed_char.size() == 1 && std::isdigit(guessed_char[0])) {
