@@ -395,6 +395,7 @@ void Application::parseServerMessage(const std::string &message)
 
 
 
+
     }
     if (needsRender && currentView == ViewState::Game) {
         std::lock_guard<std::mutex> lock(renderQueueMutex);

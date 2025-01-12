@@ -137,7 +137,6 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
         // Obsługa przycisku "Wyślij"
         if (sendButton.getGlobalBounds().contains(mousePos)) {
             if (!enteredLetter.empty()) {
-                serverMessages = ""; // Wyczyść komunikaty serwera
                 std::cout << enteredLetter << std::endl;
                 // Dodaj literę do użytych liter
 
@@ -237,9 +236,6 @@ void Widok_Game::renderGame(const std::string& roomName, const std::string& pass
     window.draw(usedLettersLabel);
 
     //Render server messages
-    // serverMessagesLabel.setString("Wiadomosci serwera: " + serverMessages);
-    // window.draw(serverMessagesLabel);
-
       if (!newServerMessage.empty() && newServerMessage != serverMessages) {
         serverMessages = newServerMessage;
         serverMessageTime = std::chrono::steady_clock::now();
