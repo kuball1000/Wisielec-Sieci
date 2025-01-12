@@ -175,7 +175,23 @@ void handle_client_game(int client_socket) {
 
                 // Sprawdzanie, czy znak jest literą
                 if (guessed_char.size() == 1 && std::isalpha(guessed_char[0])) {
-                    break; // Otrzymano poprawny znak, zakończ pętlę
+                    char letter = guessed_char[0];
+
+                    // Sprawdź, czy litera została już zgadywana
+                    if (game_state->wrong_guesses[client_socket].find(letter) != std::string::npos ||
+                        game_state->guessed_words[client_socket].find(letter) != std::string::npos) {
+                        if (!send_message(client_socket, "Już zgadywałeś tę literę. Podaj inną literę: ")) {
+                            {
+                                std::lock_guard<std::mutex> lock(room_mutex);
+                                clients.erase(client_socket);
+                            }
+                            return; // Klient rozłączył się
+                        }
+                        continue; // Powtarzaj pętlę do momentu otrzymania poprawnej odpowiedzi
+                    }
+
+                    // Jeśli litera jest poprawna lub jeszcze nie była zgadywana, zakończ pętlę
+                    break;
                 }
 
                 // Jeśli znak jest niepoprawny (nie litera, nie cyfra), wyślij komunikat
@@ -207,13 +223,15 @@ void handle_client_game(int client_socket) {
             }
 
             if (game_state->guessed_words[client_socket] == game_state->secret_word) {
-                broadcast("Gracz " + clients_nicks[client_socket] + " odgadł hasło: " + game_state->secret_word + "!\n");
+                send_game_state(client_socket);
+                broadcast("Gracz " + clients_nicks[client_socket] + " odgadl haslo: " + game_state->secret_word + "!\n");
                 end_round(client_socket, "Odgadłeś hasło! Wygrałeś.\n");
                 break;
             }
 
 
             if (game_state->wrong_counts[client_socket] == MAX_WRONG_GUESSES) {
+                send_game_state(client_socket);
                 send_message(client_socket, "Przegrałeś! Hasło to: " + game_state->secret_word + "\n");
                 {
                     std::lock_guard<std::mutex> lock(room_mutex);

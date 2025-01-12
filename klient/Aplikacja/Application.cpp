@@ -369,18 +369,29 @@ void Application::parseServerMessage(const std::string &message)
         }
     }
     needsRender = true;
+    } else if (line.find("Czas się skończył! Gra zakończona.") != std::string::npos) {
+        playerStagesInitialized = false;
+        needsRender = true;
+        _serverMessages = "Czas sie skonczyl! Gra rozpoczyna sie od nowa!";
+    } else if (line.find("Nowa gra rozpoczyna się! Hasło:") != std::string::npos) {
+        playerStagesInitialized = false;
+        needsRender = true;
+        _serverMessages = "Nowa gra rozpoczyna się!";
+    } else if (line.find("Już zgadywałeś tę literę. Podaj inną literę: ") != std::string::npos) {
+        _serverMessages = "Juz zgadywales te litere!";
+        needsRender = true;
+    } else if (line.find("Odgadłeś hasło! Wygrałeś.") != std::string::npos) {
+        _serverMessages = "Odgadles haslo! Wygrales! Nowa gra zaraz sie rozpocznie!";
+        playerStagesInitialized = false;
+        needsRender = true;
+    } else if (line.find("Gracz ") != std::string::npos && line.find(" odgadl haslo: ") != std::string::npos) {
+            playerStagesInitialized = false;
 
-    // Debugowanie
-    std::cout << "App: ";
-    for (const auto& stage : playerStages) {
-        std::cout << stage << " ";
+            _serverMessages = line + " Nowa gra zaraz sie rozpocznie!";
+            needsRender = true;
+        // }
     }
-    std::cout << std::endl;
-} else if (line.find("Czas się skończył! Gra zakończona.") != std::string::npos) {
-    playerStagesInitialized = false;
-    needsRender = true;
-    _serverMessages = "Czas sie skonczyl! Gra rozpoczyna sie od nowa!";
-}
+
 
 
 
