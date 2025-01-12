@@ -409,19 +409,15 @@ void Application::parseServerMessage(const std::string &message)
             needsRender = true;
         }
         else if (line.find("Stan graczy w pokoju:") != std::string::npos) {
-    std::cout << "First line (ignored): " << line << std::endl;
 
     // Pomiń pierwszą linię
     while (std::getline(stream, line)) {
-        std::cout << "Processing line: " << line << std::endl;
 
         // Podział na nick i wynik
         size_t separator = line.find(',');
         if (separator != std::string::npos) {
             std::string playerName = line.substr(0, separator);
             int playerStage = std::stoi(line.substr(separator + 1));
-
-            std::cout << "Player: " << playerName << ", Stage: " << playerStage << std::endl;
 
             // Aktualizacja listy graczy i ich etapów
             auto it = std::find(playerNames.begin(), playerNames.end(), playerName);
