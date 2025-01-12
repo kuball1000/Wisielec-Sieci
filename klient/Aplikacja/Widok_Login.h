@@ -9,24 +9,42 @@
 class Widok_Login {
 public:
     explicit Widok_Login(sf::RenderWindow& window);
+
     bool handleEvent(const sf::Event& event);
     void render();
     void showErrorMessage(const std::string& message);
 
     const std::string& getNick() const { return inputText; }
+    const std::string& getIP() const { return ipText; }
+
 private:
     sf::RenderWindow& window;
+      bool buttonPressed;
+
+    // Tytuł
     sf::Text title;
-    sf::Text inputLabel;
-    sf::RectangleShape inputBox;
+
+    // Nick input box
+    sf::Text inputLabelNick;
+    sf::RectangleShape inputBoxNick;
+    std::string inputText;
+
+    // IP input box
+    sf::Text inputLabelIP;
+    sf::RectangleShape inputBoxIP;
+    std::string ipText;
+
+    // Przycisk "Zaloguj"
     sf::RectangleShape button;
     sf::Text buttonLabel;
 
-    std::string inputText;
-    bool buttonPressed;
-
+    // Komunikat o błędzie
     sf::Text errorMessage;
     std::chrono::steady_clock::time_point errorMessageTimer;
+
+    // Aktywny input box
+    enum class InputType { Nick, IP };
+    InputType activeInput = InputType::Nick;
 };
 
 #endif
