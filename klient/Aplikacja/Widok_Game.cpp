@@ -194,7 +194,7 @@ void Widok_Game::renderLobby(const std::vector<std::string>& playerNames,bool fl
 void Widok_Game::renderGame(const std::string& roomName, const std::string& password,
                             const std::string& usedLetters, int lives,
                             const std::vector<std::string>& playerNames,
-                            const std::vector<int>& playerStages, const std::string& serverMessages) {
+                            const std::vector<int>& playerStages, const std::string& newServerMessage) {
     // Room title
     roomTitle.setString("Pokoj: " + roomName);
     window.draw(roomTitle);
@@ -204,6 +204,7 @@ void Widok_Game::renderGame(const std::string& roomName, const std::string& pass
 // }
 // std::cout << std::endl;
     // Render players and hangman stages
+
     const auto& hangmanStagesData = Resources::getHangmanStages();
     for (size_t i = 0; i < playerNames.size(); ++i) {
         playerLabels[i].setString(playerNames[i]);
@@ -235,9 +236,24 @@ void Widok_Game::renderGame(const std::string& roomName, const std::string& pass
     usedLettersLabel.setString("Uzyte litery: " + usedLetters);
     window.draw(usedLettersLabel);
 
-    // Render server messages
-    serverMessagesLabel.setString("Wiadomosci serwera: " + serverMessages);
-    window.draw(serverMessagesLabel);
+    //Render server messages
+    // serverMessagesLabel.setString("Wiadomosci serwera: " + serverMessages);
+    // window.draw(serverMessagesLabel);
+
+      if (!newServerMessage.empty() && newServerMessage != serverMessages) {
+        serverMessages = newServerMessage;
+        serverMessageTime = std::chrono::steady_clock::now();
+    }
+
+    // Check if the message should still be rendered
+    auto now = std::chrono::steady_clock::now();
+    if (now - serverMessageTime < std::chrono::seconds(4)) {
+        serverMessagesLabel.setString("Wiadomosci serwera: " + serverMessages);
+        window.draw(serverMessagesLabel);
+    }else{
+        serverMessagesLabel.setString("Wiadomosci serwera: ");
+        window.draw(serverMessagesLabel);
+    }
 
     // Render back button
     window.draw(backButton);

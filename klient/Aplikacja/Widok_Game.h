@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <chrono>
 
 class Application;
 
@@ -14,7 +15,12 @@ public:
 
     bool handleLobbyEvent(const sf::Event& event); // Obsługa zdarzeń w widoku lobby
     bool handleGameEvent(const sf::Event& event); // Obsługa zdarzeń w widoku gry
-    void renderGame(const std::string& roomName, const std::string& password, const std::string& usedLetters, int lives, const std::vector<std::string>& playerNames, const std::vector<int>& playerStages, const std::string& serverMessages); // Renderowanie widoku gry
+    void renderGame(const std::string& roomName, 
+                    const std::string& password, 
+                    const std::string& usedLetters,
+                     int lives, const std::vector<std::string>& playerNames,
+                      const std::vector<int>& playerStages, 
+                      const std::string& serverMessages); // Renderowanie widoku gry
     void renderLobby(const std::vector<std::string>& playerNames,bool flag,const std::string& roomName); // Renderowanie widoku lobby
     // void updatePlayerList(const std::string& serverMessage);
 
@@ -59,7 +65,9 @@ private:
     // Komunikaty serwera
     sf::Text serverMessagesLabel;
     std::string serverMessages;
+    std::string prevServerMessages;
 
+    std::chrono::steady_clock::time_point serverMessageTime; // Czas ustawienia ostatniej wiadomości serwera
     bool backAction = false; // Flaga sygnalizująca powrót do wyboru pokoju
     bool startGameAction = false; // Flaga sygnalizująca rozpoczęcie gry
 };
