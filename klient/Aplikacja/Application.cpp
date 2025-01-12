@@ -277,10 +277,17 @@ void Application::render()
         break;
     case ViewState::Game:
         if (!playerStagesInitialized) {
+            playerStages.clear(); // Wyczyść etapy graczy
             playerStages.resize(playerNames.size(), 0); // Ustaw zerowe etapy dla każdego gracza
+            usedLetters.clear(); // Wyczyść użyte litery
             playerStagesInitialized = true; // Oznacz jako zainicjalizowane
+        //     std::cout << "od nowa" << std::endl;
+        //     for (const auto& stage : playerStages) {
+        //         std::cout << stage << " ";
+        //     }
+        //     std::cout << std::endl;
         }
-        gameView.renderGame(currentRoom, password, usedLetters, lives, playerNames, playerStages);
+        gameView.renderGame(currentRoom, password, usedLetters, lives, playerNames, playerStages, _serverMessages);
         break;
     case ViewState::Lobby:
         gameView.renderLobby(playerNames,lobbyflag,currentRoom);
@@ -333,8 +340,7 @@ void Application::parseServerMessage(const std::string &message)
             this->lives = std::stoi(line.substr(line.find(":") + 2));
             needsRender = true;
         }
-        else if (line.find("Stan graczy w pokoju:") != std::string::npos)
-{
+        else if (line.find("Stan graczy w pokoju:") != std::string::npos) {
     std::cout << "First line (ignored): " << line << std::endl;
 
     // Pomiń pierwszą linię
@@ -370,7 +376,14 @@ void Application::parseServerMessage(const std::string &message)
         std::cout << stage << " ";
     }
     std::cout << std::endl;
+} else if (line.find("Czas się skończył! Gra zakończona.") != std::string::npos) {
+    playerStagesInitialized = false;
+    needsRender = true;
+    _serverMessages = "Czas sie skonczyl! Gra rozpoczyna sie od nowa!";
 }
+
+
+
     }
     if (needsRender && currentView == ViewState::Game) {
         std::lock_guard<std::mutex> lock(renderQueueMutex);
