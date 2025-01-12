@@ -365,6 +365,41 @@ void initialize_player_state(int client_socket) {
     game_state->wrong_counts[client_socket] = 0;
 }
 
+void monitor_empty_room() {
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(10)); // Sprawdzaj co 10 sekund
+        {
+            if (clients.size() > 1) {
+                // Jeśli w pokoju jest więcej niż 1 gracz, resetujemy licznik czasu
+                continue;
+            } else if (clients.size() == 1) {
+                // Jeśli jest dokładnie jeden gracz, zaczynamy odliczanie
+                auto start_time = std::chrono::steady_clock::now();
+
+                while (true) {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    if (clients.size() > 1) {
+                        // Jeśli liczba graczy wzrośnie, przerywamy monitorowanie
+                        break;
+                    }
+
+                    auto elapsed_time = std::chrono::steady_clock::now() - start_time;
+
+                    if (std::chrono::duration_cast<std::chrono::minutes>(elapsed_time).count() >= 1) {
+                        // Minęła minuta, zamykamy pokój
+                        close_room();
+                        return;
+                    }
+                }
+            } else {
+                // Jeśli w pokoju nie ma graczy, zamykamy pokój
+                close_room();
+                return;
+            }
+        }
+    }
+}
+
 
 private:
     bool send_message(int socket, const std::string& message) {
@@ -548,7 +583,7 @@ void handle_room_choice(int client_socket) {
             rooms[room_name] = room;
             room->clients.insert(client_socket);
             std::thread(&Room::handle_client_game, room, client_socket).detach();
-
+            std::thread(&Room::monitor_empty_room, room).detach();
         }
 
         send_message(client_socket, "Stworzono pokój: " + room_name + "\n");
