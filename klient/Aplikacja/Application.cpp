@@ -2,6 +2,7 @@
 #include <iostream>
 #include <arpa/inet.h>
 #include "Widok_Choice.h"
+#include "Widok_Login.h"
 #include <sstream>
 
 
@@ -16,15 +17,79 @@ Application::Application()
       playerStages({0,0,0,0}),
       running(true)
 {
-    if (!connectToServer("127.0.0.1", 12345))
-    {
-        std::cerr << "Nie udało się połączyć z serwerem." << std::endl;
+    while (currentView == ViewState::Login) {
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                window.close();
+                return; // Wyjdź z aplikacji
+            }
+
+            if (loginView.handleEvent(event)) {
+                if (loginView.isIPButtonPressed()) {
+                // Użytkownik kliknął przycisk logowania
+                std::string serverIp = loginView.getIP();
+                loginView.resetIPButton();
+                std::cout << "Próba połączenia z serwerem: " << serverIp << std::endl;
+                
+
+                if (!connectToServer(serverIp, 12345)) {
+                    loginView.showErrorMessage("Nie udało się połączyć z serwerem: " + serverIp);
+                } else {
+                    std::cout << "Połączono z serwerem." << std::endl;
+                    receiverThread = std::thread(&Application::receiveMessages, this);
+                    
+                }
+
+    
+
+                }
+
+                if (loginView.isButtonPressed()) {
+                    loginView.resetButton();
+                std::cout << "abc1" << std::endl;
+
+                if (!sendMessage(loginView.getNick()))
+                {
+                    std::cerr << "Błąd wysyłania nicka." << std::endl;
+                }
+                else
+                {
+
+                    waitingForResponse = true;
+
+                    while (waitingForResponse)
+                    {
+                        sf::sleep(sf::milliseconds(10)); // Mała przerwa, aby odciążyć CPU
+                    }
+
+                    std::string message;
+                    {
+                        std::lock_guard<std::mutex> lock(messageMutex); // Zablokuj mutex
+                        message = lastMessage;
+                    }
+
+                    // Oczekuj odpowiedzi serwera
+                    std::cerr << lastMessage << std::endl;
+                    if (lastMessage == "Nick jest już zajęty. Podaj inny:")
+                    {
+                        loginView.showErrorMessage("Nick jest juz zajety. Podaj inny");
+                    }
+                    else
+                    {
+                        currentView = ViewState::Choice1;
+                    }
+                }
+                }
+            }
+        }
+
+        window.clear(sf::Color(200, 200, 200));
+        loginView.render();
+        window.display();
     }
-    else
-    {
-        // Uruchom wątek odbierania wiadomości
-        receiverThread = std::thread(&Application::receiveMessages, this);
-    }
+
+
 }
 
 Application::~Application()
@@ -153,50 +218,53 @@ void Application::handleEvents()
     sf::Event event;
     while (window.pollEvent(event))
     {
-        if (event.type == sf::Event::Closed)
-        {
+        if (event.type == sf::Event::Closed) {
             window.close();
-             if (!sendMessage("/exit"))
-            {
+            if (!sendMessage("/exit")) {
                 std::cerr << "Błąd wysyłania wiadomości /exit do serwera." << std::endl;
             }
         }
-        switch (currentView)
-        {
+
+        switch (currentView) {
         case ViewState::Login:
             if (loginView.handleEvent(event))
             {
-                if (!sendMessage(loginView.getNick()))
-                {
-                    std::cerr << "Błąd wysyłania nicka." << std::endl;
-                }
-                else
-                {
+                // if (loginView.isButtonPressed()) {
+                //     loginView.resetButton();
+                // std::cout << "abc1" << std::endl;
 
-                    waitingForResponse = true;
+                // if (!sendMessage(loginView.getNick()))
+                // {
+                //     std::cerr << "Błąd wysyłania nicka." << std::endl;
+                // }
+                // else
+                // {
 
-                    while (waitingForResponse)
-                    {
-                        sf::sleep(sf::milliseconds(10)); // Mała przerwa, aby odciążyć CPU
-                    }
+                //     waitingForResponse = true;
 
-                    std::string message;
-                    {
-                        std::lock_guard<std::mutex> lock(messageMutex); // Zablokuj mutex
-                        message = lastMessage;
-                    }
+                //     while (waitingForResponse)
+                //     {
+                //         sf::sleep(sf::milliseconds(10)); // Mała przerwa, aby odciążyć CPU
+                //     }
 
-                    // Oczekuj odpowiedzi serwera
-                    std::cerr << lastMessage << std::endl;
-                    if (lastMessage == "Nick jest już zajęty. Podaj inny:")
-                    {
-                        loginView.showErrorMessage("Nick jest juz zajety. Podaj inny");
-                    }
-                    else
-                    {
-                        currentView = ViewState::Choice1;
-                    }
-                }
+                //     std::string message;
+                //     {
+                //         std::lock_guard<std::mutex> lock(messageMutex); // Zablokuj mutex
+                //         message = lastMessage;
+                //     }
+
+                //     // Oczekuj odpowiedzi serwera
+                //     std::cerr << lastMessage << std::endl;
+                //     if (lastMessage == "Nick jest już zajęty. Podaj inny:")
+                //     {
+                //         loginView.showErrorMessage("Nick jest juz zajety. Podaj inny");
+                //     }
+                //     else
+                //     {
+                //         currentView = ViewState::Choice1;
+                //     }
+                // }
+                // }
             }
             break;
         case ViewState::Choice1:
@@ -406,16 +474,4 @@ void Application::parseServerMessage(const std::string &message)
     // Aktualizacja serwerowych wiadomości
     serverMessages = message;
 
-
-
-    // Logowanie danych dla debugowania
-    // std::cout << "Zaktualizowane dane: " << std::endl;
-    // std::cout << "Hasło: " << password << std::endl;
-    // std::cout << "Niepoprawne litery: " << usedLetters << std::endl;
-    // std::cout << "Pozostałe próby: " << lives << std::endl;
-    // std::cout << "Stan graczy w pokoju: " << std::endl;
-    // for (size_t i = 0; i < playerNames.size(); ++i)
-    // {
-    //     std::cout << playerNames[i] << ": " << playerScores[i] << std::endl;
-    // }
 }
