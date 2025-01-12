@@ -54,6 +54,12 @@ Widok_Choice::Widok_Choice(sf::RenderWindow &window, Application* app) : window(
     confirmButtonText.setFillColor(sf::Color::White);
     confirmButtonText.setPosition(310, 230);
 
+    errormessage.setFont(Resources::getFont());
+    errormessage.setString("");
+    errormessage.setCharacterSize(18);
+    errormessage.setPosition(300, 350);
+    errormessage.setFillColor(sf::Color::Red);
+
     // Przycisk powrotu
     backButton.setSize(sf::Vector2f(100, 40));
     backButton.setFillColor(sf::Color(128, 128, 128));
@@ -192,8 +198,9 @@ void Widok_Choice::renderCreateRoom()
     window.draw(displayedInput);
     window.draw(confirmButton);
     window.draw(confirmButtonText);
-    window.draw(backButton);
-    window.draw(backButtonText);
+    // window.draw(backButton); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
+    // window.draw(backButtonText);
+    window.draw(errormessage);
 }
 
 void Widok_Choice::renderJoinRoom()
@@ -225,8 +232,8 @@ void Widok_Choice::renderJoinRoom()
         window.draw(roomButtonTexts[i]);
     }
 
-    window.draw(backButton);
-    window.draw(backButtonText);
+    // window.draw(backButton);
+    // window.draw(backButtonText); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
 }
 
 bool Widok_Choice::needsReset() const

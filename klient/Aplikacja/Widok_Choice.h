@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
+#include <algorithm>
 
 class Application;
 
@@ -47,7 +48,7 @@ private:
     sf::RectangleShape inputBox;
     sf::Text inputText;
     std::string roomNameInput;
-
+    sf::Text errormessage;
     sf::RectangleShape confirmButton;
     sf::Text confirmButtonText;
 

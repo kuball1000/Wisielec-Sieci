@@ -34,7 +34,7 @@ Application::Application()
                 
 
                 if (!connectToServer(serverIp, 12345)) {
-                    loginView.showErrorMessage("Nie udało się połączyć z serwerem: " + serverIp);
+                    loginView.showErrorMessage("Nie udalo się polaczyc z serwerem: " + serverIp);
                 } else {
                     std::cout << "Połączono z serwerem." << std::endl;
                     already_connected = true;
@@ -48,7 +48,6 @@ Application::Application()
 
                 if (loginView.isButtonPressed()) {
                     loginView.resetButton();
-                std::cout << "abc1" << std::endl;
 
                 if (!sendMessage(loginView.getNick()))
                 {
@@ -431,7 +430,7 @@ void Application::parseServerMessage(const std::string &message)
     } else if (line.find("Zostałeś ostatnim graczem przy życiu! Wygrywasz.") != std::string::npos) {
             playerStagesInitialized = false;
 
-            _serverMessages = "Zostałeś ostatnim graczem przy życiu! Wygrywasz.";
+            _serverMessages = "Zostales ostatnim graczem przy zyciu! Wygrywasz.";
             needsRender = true;
     }
 
