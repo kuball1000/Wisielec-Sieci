@@ -199,6 +199,11 @@ void Application::receiveMessages()
             if (currentView == ViewState::Game) { //current view nie dziala ale tak moze zostac imo
                 parseServerMessage(message);
             }
+
+            // Czekanie na zakończenie rundy w trwającym w pokoju grze i dołączneie do niej później
+            if(message.find("Niepoprawne litery:") != std::string::npos && currentView == ViewState::Lobby) {
+                currentView = ViewState::Game;
+            }
         
             waitingForResponse = false;
         }
