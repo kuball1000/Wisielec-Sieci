@@ -140,7 +140,6 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
                 serverMessages = ""; // Wyczyść komunikaty serwera
                 std::cout << enteredLetter << std::endl;
                 // Dodaj literę do użytych liter
-                if (usedLetters.find(enteredLetter) == std::string::npos && passwordLabel.getString().toAnsiString().find(enteredLetter) == std::string::npos) {
 
                     if (application && !application->sendMessage(enteredLetter)) {
                         serverMessages = "Błąd wysyłania litery do serwera.";
@@ -149,10 +148,6 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
                     }
                     
                     usedLetters += enteredLetter + " ";
-                } else {
-                    serverMessages = "Litera " + enteredLetter + " juz zostala uzyta!";
-                    return false;   
-                }
 
                 // Wyczyść pole tekstowe
                 enteredLetter.clear();
