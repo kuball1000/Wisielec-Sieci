@@ -1,9 +1,13 @@
 #include "Widok_Game.h"
 #include "Resources.h"
 #include <iostream>
+#include "Application.h" 
 
-Widok_Game::Widok_Game(sf::RenderWindow& window)
-    : window(window), lives(5), backAction(false), startGameAction(false) {
+Widok_Game::Widok_Game(sf::RenderWindow& window, Application* app)
+    : window(window), application(app), lives(5), backAction(false), startGameAction(false) {
+            if (!application) {
+        std::cerr << "Błąd: wskaźnik application nie został poprawnie przekazany do Widok_Game." << std::endl;
+    }
     // Room title
     roomTitle.setFont(Resources::getFont());
     roomTitle.setCharacterSize(24);
@@ -133,25 +137,28 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
         // Obsługa przycisku "Wyślij"
         if (sendButton.getGlobalBounds().contains(mousePos)) {
             if (!enteredLetter.empty()) {
-                 serverMessages = ""; // Wyczyść komunikaty serwera
+                serverMessages = ""; // Wyczyść komunikaty serwera
+                std::cout << enteredLetter << std::endl;
                 // Dodaj literę do użytych liter
                 if (usedLetters.find(enteredLetter) == std::string::npos && passwordLabel.getString().toAnsiString().find(enteredLetter) == std::string::npos) {
+
+                    if (application && !application->sendMessage(enteredLetter)) {
+                        serverMessages = "Błąd wysyłania litery do serwera.";
+                    } else if (!application) {
+                        serverMessages = "Błąd: wskaźnik application jest pusty.";
+                    }
+                    
                     usedLetters += enteredLetter + " ";
-                }
-                else{
+                } else {
                     serverMessages = "Litera " + enteredLetter + " juz zostala uzyta!";
                     return false;   
                 }
-
-                // Wyślij literę do serwera (zależnie od implementacji)
-                // sendToServer(enteredLetter);
 
                 // Wyczyść pole tekstowe
                 enteredLetter.clear();
             }
         }
-    } 
-    else if (event.type == sf::Event::TextEntered) {
+    } else if (event.type == sf::Event::TextEntered) {
         if (event.text.unicode == 8 && !enteredLetter.empty()) { // Backspace
             enteredLetter.pop_back();
         } else if (event.text.unicode >= 'a' && event.text.unicode <= 'z') {
@@ -196,7 +203,11 @@ void Widok_Game::renderGame(const std::string& roomName, const std::string& pass
     // Room title
     roomTitle.setString("Pokoj: " + roomName);
     window.draw(roomTitle);
-
+// std::cout << "widok: ";
+// for (const auto& stage : playerStages) {
+//     std::cout << stage << " ";
+// }
+// std::cout << std::endl;
     // Render players and hangman stages
     const auto& hangmanStagesData = Resources::getHangmanStages();
     for (size_t i = 0; i < playerNames.size(); ++i) {

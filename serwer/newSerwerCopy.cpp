@@ -348,21 +348,13 @@ void reset_game_for_room() {
 }
 
 void broadcast_player_status() {
-    std::string status_list = "Stan graczy w pokoju:\n[";
-    bool first = true;
-
+    std::string status_list = "Stan graczy w pokoju:\n";
     {
         std::lock_guard<std::mutex> lock(game_state->game_mutex);
         for (int socket : clients) {
-            if (!first) {
-                status_list += ", ";
-            }
-            status_list += "(" + clients_nicks[socket] + ", " + std::to_string(game_state->wrong_counts[socket]) + ")";
-            first = false;
+            status_list += clients_nicks[socket] + ", " + std::to_string(game_state->wrong_counts[socket]) + "\n";
         }
     }
-
-    status_list += "]\n";
     broadcast(status_list);
 }
 

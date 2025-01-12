@@ -12,6 +12,7 @@
 #include <mutex>
 #include <vector>
 #include <string>
+#include <queue>
 
 class Application {
 public:
@@ -28,6 +29,10 @@ private:
     void render();
     bool connectToServer(const std::string& serverIp, unsigned short port);
     bool lobbyflag;
+    bool playerStagesInitialized = false;
+
+    std::queue<std::function<void()>> renderQueue; // Kolejka zdarzeń do renderowania
+    std::mutex renderQueueMutex; // Mutex do synchronizacji kolejki
 
 
     sf::RenderWindow window;

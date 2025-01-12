@@ -6,9 +6,11 @@
 #include <vector>
 #include <iostream>
 
+class Application;
+
 class Widok_Game {
 public:
-    explicit Widok_Game(sf::RenderWindow& window);
+    explicit Widok_Game(sf::RenderWindow& window, Application* app);
 
     bool handleLobbyEvent(const sf::Event& event); // Obsługa zdarzeń w widoku lobby
     bool handleGameEvent(const sf::Event& event); // Obsługa zdarzeń w widoku gry
@@ -18,6 +20,8 @@ public:
 
 private:
     sf::RenderWindow& window;
+    Application* application;
+    
     sf::Text roomTitle;
     sf::RectangleShape backButton;
     sf::Text backButtonText;

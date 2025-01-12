@@ -10,7 +10,7 @@ Application::Application()
       currentView(ViewState::Login),
       loginView(window),
       choiceView(window, this),
-      gameView(window),
+      gameView(window, this),
       password(""), // Przykładowe hasło
       playerNames({}),
       playerStages({0,0,0,0}),
@@ -276,7 +276,10 @@ void Application::render()
         choiceView.render();
         break;
     case ViewState::Game:
-        playerStages.resize(playerNames.size(), 0); // Ustaw zerowe etapy dla każdego gracza
+        if (!playerStagesInitialized) {
+            playerStages.resize(playerNames.size(), 0); // Ustaw zerowe etapy dla każdego gracza
+            playerStagesInitialized = true; // Oznacz jako zainicjalizowane
+        }
         gameView.renderGame(currentRoom, password, usedLetters, lives, playerNames, playerStages);
         break;
     case ViewState::Lobby:
@@ -311,64 +314,75 @@ void Application::parseServerMessage(const std::string &message)
     std::istringstream stream(message);
     std::string line;
 
+    bool needsRender = false;
+
     while (std::getline(stream, line))
     {
         if (line.find("Hasło:") != std::string::npos)
         {
             this->password = line.substr(line.find(":") + 2);
+            needsRender = true;
         }
         else if (line.find("Niepoprawne litery:") != std::string::npos)
         {
             this->usedLetters = line.substr(line.find(":") + 2);
+            needsRender = true;
         }
         else if (line.find("Pozostałe próby:") != std::string::npos)
         {
             this->lives = std::stoi(line.substr(line.find(":") + 2));
+            needsRender = true;
         }
         else if (line.find("Stan graczy w pokoju:") != std::string::npos)
-        {
-            // Wyodrębnianie danych o graczach
-            std::string playersData = line.substr(line.find("[") + 1, line.find("]") - line.find("[") - 1);
+{
+    std::cout << "First line (ignored): " << line << std::endl;
 
-            std::istringstream playersStream(playersData);
-            std::string playerEntry;
+    // Pomiń pierwszą linię
+    while (std::getline(stream, line)) {
+        std::cout << "Processing line: " << line << std::endl;
 
-            while (std::getline(playersStream, playerEntry, ','))
-            {
-                // Usunięcie niepotrzebnych nawiasów i spacji
-                playerEntry.erase(std::remove(playerEntry.begin(), playerEntry.end(), '('), playerEntry.end());
-                playerEntry.erase(std::remove(playerEntry.begin(), playerEntry.end(), ')'), playerEntry.end());
-                playerEntry.erase(std::remove(playerEntry.begin(), playerEntry.end(), ' '), playerEntry.end());
+        // Podział na nick i wynik
+        size_t separator = line.find(',');
+        if (separator != std::string::npos) {
+            std::string playerName = line.substr(0, separator);
+            int playerStage = std::stoi(line.substr(separator + 1));
 
-                // Podział na nick i wynik
-                size_t separator = playerEntry.find(',');
-                if (separator != std::string::npos)
-                {
-                    std::string playerName = playerEntry.substr(0, separator);
-                    int playerStage = std::stoi(playerEntry.substr(separator + 1));
+            std::cout << "Player: " << playerName << ", Stage: " << playerStage << std::endl;
 
-                    // Aktualizacja listy graczy i ich etapów
-                    auto it = std::find(playerNames.begin(), playerNames.end(), playerName);
-                    if (it != playerNames.end())
-                    {
-                        // Gracz istnieje – aktualizujemy jego etap
-                        size_t index = std::distance(playerNames.begin(), it);
-                        playerStages[index] = playerStage;
-                    }
-                    else
-                    {
-                        // Gracz nie istnieje – dodajemy nowego
-                        playerNames.push_back(playerName);
-                        playerStages.push_back(playerStage);
-                    }
-                }
+            // Aktualizacja listy graczy i ich etapów
+            auto it = std::find(playerNames.begin(), playerNames.end(), playerName);
+            if (it != playerNames.end()) {
+                // Gracz istnieje – aktualizujemy jego etap
+                size_t index = std::distance(playerNames.begin(), it);
+                playerStages[index] = playerStage;
+            } else {
+                // Gracz nie istnieje – dodajemy nowego
+                playerNames.push_back(playerName);
+                playerStages.push_back(playerStage);
             }
-
         }
+    }
+    needsRender = true;
+
+    // Debugowanie
+    std::cout << "App: ";
+    for (const auto& stage : playerStages) {
+        std::cout << stage << " ";
+    }
+    std::cout << std::endl;
+}
+    }
+    if (needsRender && currentView == ViewState::Game) {
+        std::lock_guard<std::mutex> lock(renderQueueMutex);
+        renderQueue.push([this]() {
+            render();
+        });
     }
 
     // Aktualizacja serwerowych wiadomości
     serverMessages = message;
+
+
 
     // Logowanie danych dla debugowania
     // std::cout << "Zaktualizowane dane: " << std::endl;
