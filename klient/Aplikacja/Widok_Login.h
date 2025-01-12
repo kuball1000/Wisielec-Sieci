@@ -11,7 +11,7 @@ public:
     explicit Widok_Login(sf::RenderWindow& window);
 
     bool handleEvent(const sf::Event& event);
-    void render();
+    void render(bool already_connected);
     void showErrorMessage(const std::string& message);
     bool isIPButtonPressed() const { return ipButtonPressed; }
     void resetIPButton();

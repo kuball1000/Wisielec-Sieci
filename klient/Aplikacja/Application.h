@@ -30,6 +30,7 @@ private:
     bool connectToServer(const std::string& serverIp, unsigned short port);
     bool lobbyflag;
     bool playerStagesInitialized = false;
+    bool already_connected = false;
     std::string _serverMessages;
 
     std::queue<std::function<void()>> renderQueue; // Kolejka zdarzeń do renderowania

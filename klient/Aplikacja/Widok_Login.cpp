@@ -101,7 +101,7 @@ bool Widok_Login::handleEvent(const sf::Event& event) {
     return false;
 }
 
-void Widok_Login::render() {
+void Widok_Login::render(bool already_connected) {
     window.draw(title);
 
     // Renderowanie pola nicku
@@ -119,8 +119,13 @@ void Widok_Login::render() {
     window.draw(ipDisplay);
 
     // Renderowanie przycisku
-    window.draw(button);
-    window.draw(buttonLabel);
+    if (already_connected == true)
+    {
+        window.draw(button);
+        window.draw(buttonLabel);
+    }
+    
+ 
     window.draw(ipButton);
     window.draw(ipButtonLabel);
 

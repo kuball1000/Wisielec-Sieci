@@ -37,6 +37,7 @@ Application::Application()
                     loginView.showErrorMessage("Nie udało się połączyć z serwerem: " + serverIp);
                 } else {
                     std::cout << "Połączono z serwerem." << std::endl;
+                    already_connected = true;
                     receiverThread = std::thread(&Application::receiveMessages, this);
                     
                 }
@@ -85,7 +86,7 @@ Application::Application()
         }
 
         window.clear(sf::Color(200, 200, 200));
-        loginView.render();
+        loginView.render(already_connected);
         window.display();
     }
 
@@ -338,7 +339,7 @@ void Application::render()
     switch (currentView)
     {
     case ViewState::Login:
-        loginView.render();
+        loginView.render(already_connected);
         break;
     case ViewState::Choice1:
         choiceView.render();
