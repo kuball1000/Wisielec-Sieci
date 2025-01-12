@@ -13,6 +13,11 @@ public:
     bool handleEvent(const sf::Event& event);
     void render();
     void showErrorMessage(const std::string& message);
+    bool isIPButtonPressed() const { return ipButtonPressed; }
+    void resetIPButton();
+
+    bool isButtonPressed() const { return buttonPressed; }
+    void resetButton();
 
     const std::string& getNick() const { return inputText; }
     const std::string& getIP() const { return ipText; }
@@ -45,6 +50,10 @@ private:
     // Aktywny input box
     enum class InputType { Nick, IP };
     InputType activeInput = InputType::Nick;
+
+    sf::RectangleShape ipButton;       // Nowy przycisk
+    sf::Text ipButtonLabel;            // Etykieta nowego przycisku
+    bool ipButtonPressed = false;      // Flaga dla wciśnięcia przycisku
 };
 
 #endif

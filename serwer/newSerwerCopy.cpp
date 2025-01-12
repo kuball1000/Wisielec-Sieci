@@ -440,6 +440,12 @@ private:
             message.append(buffer, received);
             len -= received;
         }
+        if (message == "/exit") {
+            std::cout << "Klient wysłał /exit. Zamykam socket: " << socket << std::endl;
+            close(socket); // Zamknięcie socketu klienta
+            return false; // Zwrot false, aby poinformować o zakończeniu komunikacji
+        }
+        
         return true;
     }
 };
@@ -682,6 +688,11 @@ private:
             if (received <= 0) return false;
             message.append(buffer, received);
             len -= received;
+        }
+        if (message == "/exit") {
+            std::cout << "Klient wysłał /exit. Zamykam socket: " << socket << std::endl;
+            close(socket); // Zamknięcie socketu klienta
+            return false; // Zwrot false, aby poinformować o zakończeniu komunikacji
         }
         return true;
     }
