@@ -12,6 +12,8 @@
 #include <memory>
 #include <condition_variable>
 #include <chrono>
+#include <fstream>
+
 
 const int PORT = 12345;
 const int MAX_CLIENTS = 4;
@@ -21,7 +23,27 @@ const int ROUND_TIME_LIMIT = 240;
 std::mutex clients_mutex;
 std::unordered_map<int, std::string> clients;
 std::unordered_map<std::string, std::unordered_set<int>> rooms;
-std::vector<std::string> word_pool = {"example", "network", "hangman", "server", "client"};
+std::vector<std::string> word_pool = {};
+
+std::vector<std::string> loadWordsFromFile(const std::string& filename) {
+    std::vector<std::string> word_pool;
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Nie można otworzyć pliku: " << filename << std::endl;
+        return word_pool;
+    }
+
+    std::string word;
+    while (file >> word) {
+        word_pool.push_back(word);
+    }
+
+    file.close();
+    return word_pool;
+}
+
+
 
 // Struktura przechowująca wspólne hasło i stany graczy
 class GameState {
@@ -170,6 +192,32 @@ void handle_client_game(int client_socket) {
                     }
                     return; 
                 }
+
+                if (guessed_char == "/exit") {
+                    std::cout << "Klient wysłał /exit. Zamykam socket: " << client_socket << std::endl;
+                    close(client_socket); // Zamknięcie socketu klienta
+                    {
+                        std::lock_guard<std::mutex> lock(room_mutex);
+                        clients.erase(client_socket);
+                    }
+                    return; 
+                }
+
+                            if (guessed_char == "/lobby") {
+                std::cout << "Gracz " << clients_nicks[client_socket] << " opuścił pokój " << name << " i wraca do lobby." << std::endl;
+
+                // Usuń gracza z pokoju
+                {
+                    std::lock_guard<std::mutex> lock(room_mutex);
+                    clients.erase(client_socket);
+                }
+
+                // Powiadom innych graczy
+                broadcast("Gracz " + clients_nicks[client_socket] + " opuścił pokój.\n");
+
+                // Przekieruj gracza do menu wyboru pokoju
+                return;
+            }
 
                 // Sprawdzanie, czy znak jest cyfrą
                 if (guessed_char.size() == 1 && std::isdigit(guessed_char[0])) {
@@ -704,12 +752,27 @@ private:
             close(socket); // Zamknięcie socketu klienta
             return false; // Zwrot false, aby poinformować o zakończeniu komunikacji
         }
+
+        if (message == "/lobby") {
+            std::cout << "Klient wysłał /lobby. Cofamy go do lobby: " << socket << std::endl;
+            handle_room_choice(socket);
+            return true; // Zwrot false, aby poinformować o zakończeniu komunikacji
+        }
+
         return true;
     }
 };
 
 
 int main() {
+
+    const std::string filename = "word_poll.txt";
+    word_pool = loadWordsFromFile(filename);
+
+    if (word_pool.empty()) {
+        std::cerr << "Plik " << filename << " jest pusty lub nie istnieje." << std::endl;
+        return 1;
+    }
     try {
         Server server;
         server.start();
