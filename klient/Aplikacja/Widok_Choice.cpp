@@ -95,16 +95,16 @@ bool Widok_Choice::handleEvent(const sf::Event &event, std::string &roomName)
     {
         if (event.type == sf::Event::TextEntered)
         {
-            if (event.text.unicode == 8 && !roomNameInput.empty())
+            if (event.text.unicode == 8 )
             { // Backspace
                 roomNameInput.pop_back();
             }
-            else if (event.text.unicode >= 32 && event.text.unicode <= 126)
+            else if (event.text.unicode >= 32 && event.text.unicode <= 126 )
             {
                 roomNameInput += static_cast<char>(event.text.unicode);
             }
         }
-        else if (event.type == sf::Event::MouseButtonPressed)
+        else if (event.type == sf::Event::MouseButtonPressed && !roomNameInput.empty())
         {
             if (confirmButton.getGlobalBounds().contains(mousePos))
             {

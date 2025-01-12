@@ -227,47 +227,6 @@ void Application::handleEvents()
         }
 
         switch (currentView) {
-        case ViewState::Login:
-            if (loginView.handleEvent(event))
-            {
-                // if (loginView.isButtonPressed()) {
-                //     loginView.resetButton();
-                // std::cout << "abc1" << std::endl;
-
-                // if (!sendMessage(loginView.getNick()))
-                // {
-                //     std::cerr << "Błąd wysyłania nicka." << std::endl;
-                // }
-                // else
-                // {
-
-                //     waitingForResponse = true;
-
-                //     while (waitingForResponse)
-                //     {
-                //         sf::sleep(sf::milliseconds(10)); // Mała przerwa, aby odciążyć CPU
-                //     }
-
-                //     std::string message;
-                //     {
-                //         std::lock_guard<std::mutex> lock(messageMutex); // Zablokuj mutex
-                //         message = lastMessage;
-                //     }
-
-                //     // Oczekuj odpowiedzi serwera
-                //     std::cerr << lastMessage << std::endl;
-                //     if (lastMessage == "Nick jest już zajęty. Podaj inny:")
-                //     {
-                //         loginView.showErrorMessage("Nick jest juz zajety. Podaj inny");
-                //     }
-                //     else
-                //     {
-                //         currentView = ViewState::Choice1;
-                //     }
-                // }
-                // }
-            }
-            break;
         case ViewState::Choice1:
             if (choiceView.handleEvent(event, currentRoom)) {
                 Widok_Choice::State choiceState = choiceView.getCurrentState();
@@ -350,11 +309,6 @@ void Application::render()
             playerStages.resize(playerNames.size(), 0); // Ustaw zerowe etapy dla każdego gracza
             usedLetters.clear(); // Wyczyść użyte litery
             playerStagesInitialized = true; // Oznacz jako zainicjalizowane
-        //     std::cout << "od nowa" << std::endl;
-        //     for (const auto& stage : playerStages) {
-        //         std::cout << stage << " ";
-        //     }
-        //     std::cout << std::endl;
         }
         gameView.renderGame(currentRoom, password, usedLetters, lives, playerNames, playerStages, _serverMessages);
         break;
@@ -474,8 +428,12 @@ void Application::parseServerMessage(const std::string &message)
 
             _serverMessages = "Przegrales! Zuzyles wszystkie zycia!";
             needsRender = true;
-    }
+    } else if (line.find("Zostałeś ostatnim graczem przy życiu! Wygrywasz.") != std::string::npos) {
+            playerStagesInitialized = false;
 
+            _serverMessages = "Zostałeś ostatnim graczem przy życiu! Wygrywasz.";
+            needsRender = true;
+    }
 
 
 

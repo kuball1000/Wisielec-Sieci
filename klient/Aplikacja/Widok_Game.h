@@ -22,7 +22,7 @@ public:
                       const std::vector<int>& playerStages, 
                       const std::string& serverMessages); // Renderowanie widoku gry
     void renderLobby(const std::vector<std::string>& playerNames,bool flag,const std::string& roomName); // Renderowanie widoku lobby
-    // void updatePlayerList(const std::string& serverMessage);
+
 
 private:
     sf::RenderWindow& window;

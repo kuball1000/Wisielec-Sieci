@@ -197,12 +197,6 @@ void Widok_Game::renderGame(const std::string& roomName, const std::string& pass
     // Room title
     roomTitle.setString("Pokoj: " + roomName);
     window.draw(roomTitle);
-// std::cout << "widok: ";
-// for (const auto& stage : playerStages) {
-//     std::cout << stage << " ";
-// }
-// std::cout << std::endl;
-    // Render players and hangman stages
 
     const auto& hangmanStagesData = Resources::getHangmanStages();
     for (size_t i = 0; i < playerNames.size(); ++i) {

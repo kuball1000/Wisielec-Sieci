@@ -80,9 +80,19 @@ bool Widok_Login::handleEvent(const sf::Event& event) {
             activeInput = InputType::IP;
         } else if (button.getGlobalBounds().contains(mousePos)) {
             std::cout << "Przycisk Zaloguj kliknięty!" << std::endl; // Debug
+            if (inputText.empty()) {
+                showErrorMessage("Nick nie moze być pusty!");
+                return false;
+            }
             buttonPressed = true;
             return true; // Sygnalizowanie, że przycisk został wciśnięty
         } else if (ipButton.getGlobalBounds().contains(mousePos)) {
+            if (ipText.empty())
+            {
+                showErrorMessage("IP nie moze byc puste!");
+                return false;
+            }
+            
             ipButtonPressed = true;
             return true; // Sygnalizowanie, że przycisk wysyłania IP został wciśnięty
         }
