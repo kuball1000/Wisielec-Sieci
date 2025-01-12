@@ -14,8 +14,9 @@ Application::Application()
       gameView(window, this),
       password(""), // Przykładowe hasło
       playerNames({}),
-      playerStages({0,0,0,0}),
-      running(true)
+      running(true),
+      playerStages({0,0,0,0})
+      
 {
     while (currentView == ViewState::Login) {
         sf::Event event;
@@ -226,6 +227,8 @@ void Application::handleEvents()
         }
 
         switch (currentView) {
+        case ViewState ::Login:
+            break;
         case ViewState::Choice1:
             if (choiceView.handleEvent(event, currentRoom)) {
                 Widok_Choice::State choiceState = choiceView.getCurrentState();

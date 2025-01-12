@@ -31,16 +31,20 @@ private:
     //
     sf::Text titlenick;
 
-    // Nick input box
-    sf::Text inputLabelNick;
-    sf::RectangleShape inputBoxNick;
-    std::string inputText;
+  
+    // Aktywny input box
+    enum class InputType { Nick, IP };
+    InputType activeInput = InputType::Nick;
 
     // IP input box
     sf::Text inputLabelIP;
     sf::RectangleShape inputBoxIP;
     std::string ipText;
-
+    
+    // Nick input box
+    sf::Text inputLabelNick;
+    sf::RectangleShape inputBoxNick;
+    std::string inputText;
     // Przycisk "Zaloguj"
     sf::RectangleShape button;
     sf::Text buttonLabel;
@@ -49,9 +53,7 @@ private:
     sf::Text errorMessage;
     std::chrono::steady_clock::time_point errorMessageTimer;
 
-    // Aktywny input box
-    enum class InputType { Nick, IP };
-    InputType activeInput = InputType::Nick;
+   
 
     sf::RectangleShape ipButton;       // Nowy przycisk
     sf::Text ipButtonLabel;            // Etykieta nowego przycisku

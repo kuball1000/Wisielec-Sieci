@@ -34,9 +34,8 @@ public:
 private:
 
     sf::RenderWindow& window;
-    State currentState;
     Application* application; 
-
+    State currentState;
     // Główny widok
     sf::Text title;
     sf::RectangleShape createButton;

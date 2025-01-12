@@ -46,18 +46,20 @@ private:
 
     sf::TcpSocket tcpSocket;
     std::thread receiverThread; // Wątek do odbierania wiadomości
-    std::atomic<bool> running;
+  
     
-    std::string currentRoom;
+    
     std::string lastMessage;
     std::mutex messageMutex;
     std::atomic<bool> waitingForResponse = false; // Flaga oczekiwania na odpowiedź
-
-
+  
+    std::string currentRoom;
     // Zmienne dla widoku gry
     std::string password; // Aktualne hasło w grze
     std::vector<std::string> playerNames; // Nazwy graczy w pokoju
+    std::atomic<bool> running;
     std::vector<int> playerStages; // Etapy wisielca dla każdego gracza
+   
     std::string usedLetters;                  // Przechowuje niepoprawne litery
     int lives;                                // Liczba pozostałych prób
     std::vector<int> playerScores;            // Lista wyników graczy
