@@ -28,6 +28,8 @@ private:
 
     // Tytuł
     sf::Text title;
+    //
+    sf::Text titlenick;
 
     // Nick input box
     sf::Text inputLabelNick;

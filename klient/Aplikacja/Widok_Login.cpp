@@ -5,11 +5,18 @@ Widok_Login::Widok_Login(sf::RenderWindow& window)
     : window(window), buttonPressed(false), activeInput(InputType::Nick), ipText("127.0.0.1") {
     // Tytuł
     title.setFont(Resources::getFont());
-    title.setString("Podaj dane logowania:");
+    title.setString("Podaj adres IP serwera:");
     title.setCharacterSize(24);
     title.setFillColor(sf::Color::Black);
     title.setPosition(300, 50);
 
+    // Informacja o nicku
+    titlenick.setFont(Resources::getFont());
+    titlenick.setString("Podaj swoj nick:");
+    titlenick.setCharacterSize(24);
+    titlenick.setFillColor(sf::Color::Black);
+    titlenick.setPosition(300, 300);
+    
     // Pole nicku
     inputBoxNick.setSize(sf::Vector2f(200, 40));
     inputBoxNick.setFillColor(sf::Color(230, 230, 230));
@@ -105,11 +112,7 @@ void Widok_Login::render(bool already_connected) {
     window.draw(title);
 
     // Renderowanie pola nicku
-    window.draw(inputBoxNick);
-    sf::Text nickDisplay(inputText, Resources::getFont(), 20);
-    nickDisplay.setFillColor(sf::Color::Black);
-    nickDisplay.setPosition(310, 410);
-    window.draw(nickDisplay);
+    
 
     // Renderowanie pola IP
     window.draw(inputBoxIP);
@@ -123,6 +126,12 @@ void Widok_Login::render(bool already_connected) {
     {
         window.draw(button);
         window.draw(buttonLabel);
+        window.draw(inputBoxNick);
+        sf::Text nickDisplay(inputText, Resources::getFont(), 20);
+        nickDisplay.setFillColor(sf::Color::Black);
+        nickDisplay.setPosition(310, 410);
+        window.draw(nickDisplay);
+        window.draw(titlenick);
     }
     
  
