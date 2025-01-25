@@ -179,8 +179,8 @@ void Widok_Game::renderLobby(const std::vector<std::string>& playerNames,bool fl
     window.draw(lobbyPlayersText);
 
     // Render buttons
-    // window.draw(backButton); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
-    // window.draw(backButtonText);
+    window.draw(backButton); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
+    window.draw(backButtonText);
 
 
     if (flag && playerNames.size() > 1) {
@@ -237,7 +237,7 @@ void Widok_Game::renderGame(const std::string& roomName, const std::string& pass
 
     // Check if the message should still be rendered
     auto now = std::chrono::steady_clock::now();
-    if (now - serverMessageTime < std::chrono::seconds(4)) {
+    if (now - serverMessageTime < std::chrono::seconds(5)) {
         serverMessagesLabel.setString("Wiadomosci serwera: " + serverMessages);
         window.draw(serverMessagesLabel);
     }else{
@@ -246,6 +246,6 @@ void Widok_Game::renderGame(const std::string& roomName, const std::string& pass
     }
 
     // Render back button
-    // window.draw(backButton); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
-    // window.draw(backButtonText);
+    window.draw(backButton); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
+    window.draw(backButtonText);
 }
