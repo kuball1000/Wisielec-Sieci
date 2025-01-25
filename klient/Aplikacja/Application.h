@@ -13,6 +13,7 @@
 #include <vector>
 #include <string>
 #include <queue>
+#include <functional>
 
 class Application {
 public:
@@ -23,7 +24,7 @@ public:
     bool sendMessage(const std::string& message);
     void receiveMessages();
     void updatePlayerList(const std::string &serverMessage);
-    void  parseServerMessage(const std::string &message);
+    void parseServerMessage(const std::string &message);
 private:
     void handleEvents();
     void render();
