@@ -196,6 +196,12 @@ void Application::receiveMessages()
                 currentView = ViewState::Game; // Przejdź do widoku gry
             }
 
+            if(message.find("Pokój zostaje zamknięty.") != std::string::npos) {
+                std::cout << "Pokój zostaje zamknięty." << std::endl;
+                // TODO message 
+                window.close();
+            }
+
             if (currentView == ViewState::Game) { //current view nie dziala ale tak moze zostac imo
                 parseServerMessage(message);
             }

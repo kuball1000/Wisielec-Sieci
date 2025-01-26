@@ -20,7 +20,7 @@ Widok_Game::Widok_Game(sf::RenderWindow& window, Application* app)
     backButton.setPosition(50, 500);
 
     backButtonText.setFont(Resources::getFont());
-    backButtonText.setString("Powrot");
+    backButtonText.setString("Wyjscie");
     backButtonText.setCharacterSize(20);
     backButtonText.setFillColor(sf::Color::White);
     backButtonText.setPosition(65, 510);
@@ -113,7 +113,12 @@ bool Widok_Game::handleLobbyEvent(const sf::Event& event) {
 
         if (backButton.getGlobalBounds().contains(mousePos)) {
             backAction = true; // Ustawienie flagi powrotu
-            return true;       // Powrót do poprzedniego widoku
+            std::cout << "Wysyłanie komendy /exit do serwera." << std::endl;
+            if (!application->sendMessage("/exit")) {
+                   std::cer << "Błąd wysyłania komendy do serwera: /exit" << std::endl;
+            } else {
+                window.close();
+            }
         }
 
         if (startGameButton.getGlobalBounds().contains(mousePos)) {
@@ -129,9 +134,13 @@ bool Widok_Game::handleGameEvent(const sf::Event& event) {
     if (event.type == sf::Event::MouseButtonPressed) {
         sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
 
-        // Obsługa przycisku "Powrót"
+        // Obsługa przycisku "Wyjscie"
         if (backButton.getGlobalBounds().contains(mousePos)) {
-            return true; // Powrót do wyboru pokoju
+            if (!application->sendMessage("/exit")) {
+                //    std::cer << "Błąd wysyłania komendy do serwera: /exit" << std::endl;
+            } else {
+                window.close();
+            }
         }
 
         // Obsługa przycisku "Wyślij"

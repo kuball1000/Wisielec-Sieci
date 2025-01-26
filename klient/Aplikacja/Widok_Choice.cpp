@@ -124,8 +124,10 @@ bool Widok_Choice::handleEvent(const sf::Event &event, std::string &roomName)
 
                 return true;       // Przejście do widoku gry
             }
-            else if (backButton.getGlobalBounds().contains(mousePos))
-            {
+        } else if (backButton.getGlobalBounds().contains(mousePos)) {
+            if (!application->sendMessage("/lobby")) {
+            //    std::cer << "Błąd wysyłania komendy do serwera: /lobby" << std::endl;
+            } else {
                 currentState = State::MainView;
             }
         }
@@ -157,9 +159,12 @@ bool Widok_Choice::handleEvent(const sf::Event &event, std::string &roomName)
                 }
             }
             // Obsługa przycisku powrotu
-            if (backButton.getGlobalBounds().contains(mousePos))
-            {
-                currentState = State::MainView;
+            if (backButton.getGlobalBounds().contains(mousePos)) {
+                if (!application->sendMessage("/lobby")) {
+                    //    std::cer << "Błąd wysyłania komendy do serwera: /lobby" << std::endl;
+                } else {
+                    currentState = State::MainView;
+                }
             }
         }
     }

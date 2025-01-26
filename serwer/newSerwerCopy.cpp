@@ -132,7 +132,14 @@ public:
     do {
         if (!recv_message(owner_socket, command)) {
             broadcast("Założyciel pokoju rozłączył się. Pokój zostaje zamknięty.\n");
-            close_room();
+            // close_room();
+            // return;
+        }
+
+        if (command == "/exit") {
+            broadcast("Założyciel pokoju opuścił grę. Pokój zostaje zamknięty.\n");
+            close(owner_socket); // Zamknięcie socketu właściciela
+            close_room(); // Zamknięcie pokoju
             return;
         }
     } while (command != "/start");
@@ -335,6 +342,10 @@ void close_room() {
     for (int socket : clients) {
         send_message(socket, "Pokój zostaje zamknięty.\n");
         close(socket);
+        auto it = clients_nicks.find(socket);
+        if (it != clients_nicks.end()) {
+            clients_nicks.erase(it);  // Usuń gracza na podstawie socketu
+        } 
     }
     clients.clear();
 
@@ -394,7 +405,7 @@ void end_round(int winner_socket, const std::string& message) {
     }
 
     // Opóźnienie przed rozpoczęciem nowej gry
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    // std::this_thread::sleep_for(std::chrono::seconds(5));
 
     reset_game_for_room();
 }
@@ -501,9 +512,14 @@ private:
         if (message == "/exit") {
             std::cout << "Klient wysłał /exit. Zamykam socket: " << socket << std::endl;
             close(socket); // Zamknięcie socketu klienta
+            auto it = clients_nicks.find(socket);
+            if (it != clients_nicks.end()) {
+                clients_nicks.erase(it);  // Usuń gracza na podstawie socketu
+            } 
             return false; // Zwrot false, aby poinformować o zakończeniu komunikacji
         }
-        
+                std::cout << "Otrzymano wiadomość: " << message << std::endl;
+
         return true;
     }
 };
@@ -592,7 +608,9 @@ bool handle_client_nick(int client_socket) {
     {
         std::lock_guard<std::mutex> lock(server_mutex);
         bool nick_exists = true;
-
+        for (const auto& pair : client_nicks) {
+            std::cout << "Socket: " << pair.first << ", Nickname: " << pair.second << std::endl;
+        }
         while (nick_exists) {
             nick_exists = false;
             
@@ -750,6 +768,10 @@ private:
         if (message == "/exit") {
             std::cout << "Klient wysłał /exit. Zamykam socket: " << socket << std::endl;
             close(socket); // Zamknięcie socketu klienta
+            auto it = client_nicks.find(socket);
+            if (it != client_nicks.end()) {
+                client_nicks.erase(it);  // Usuń gracza na podstawie socketu
+            } 
             return false; // Zwrot false, aby poinformować o zakończeniu komunikacji
         }
 
