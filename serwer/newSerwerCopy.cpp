@@ -701,7 +701,9 @@ void handle_room_choice(int client_socket) {
             std::lock_guard<std::mutex> lock(server_mutex);
             std::string complete_message;
             for (const auto& [room_name, room] : rooms) {
-                complete_message += room_name + " (" + std::to_string(room->clients.size()) + "/4)\n";
+                if (room->clients.size() > 0) {
+                    complete_message += room_name + " (" + std::to_string(room->clients.size()) + "/4)\n";
+                }
             }
             complete_message += "Podaj nazwę pokoju, do którego chcesz dołączyć: ";
 
