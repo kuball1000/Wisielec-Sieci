@@ -115,7 +115,7 @@ bool Widok_Game::handleLobbyEvent(const sf::Event& event) {
             backAction = true; // Ustawienie flagi powrotu
             std::cout << "Wysyłanie komendy /exit do serwera." << std::endl;
             if (!application->sendMessage("/exit")) {
-                   std::cer << "Błąd wysyłania komendy do serwera: /exit" << std::endl;
+                   std::cout << "Błąd wysyłania komendy do serwera: /exit" << std::endl;
             } else {
                 window.close();
             }
