@@ -198,8 +198,8 @@ void Widok_Choice::renderCreateRoom()
     window.draw(displayedInput);
     window.draw(confirmButton);
     window.draw(confirmButtonText);
-    window.draw(backButton); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
-    window.draw(backButtonText);
+    // window.draw(backButton); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
+    // window.draw(backButtonText);
     window.draw(errormessage);
 }
 
@@ -232,8 +232,8 @@ void Widok_Choice::renderJoinRoom()
         window.draw(roomButtonTexts[i]);
     }
 
-    window.draw(backButton);
-    window.draw(backButtonText); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
+    // window.draw(backButton);
+    // window.draw(backButtonText); // Usunięcie przycisku powrotu do mozliwe pozniejszej implementacji
 }
 
 bool Widok_Choice::needsReset() const
